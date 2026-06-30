@@ -1,0 +1,8 @@
+packages:
+  - "apps/*"
+  - "services/*"
+  - "packages/*"
+
+# Notes:
+# - services/ai-concierge is a Python project (no package.json) and is ignored by pnpm.
+# - Any folder without a package.json is silently skipped by the workspace globs.

@@ -1,0 +1,20 @@
+# Runtime
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.0
+python-dotenv==1.0.1
+httpx==0.28.1
+
+# LLM + embeddings (Anthropic stack; Voyage is Anthropic's recommended embeddings)
+anthropic==0.42.0
+voyageai==0.3.2
+
+# Postgres + pgvector
+psycopg[binary]==3.2.3
+pgvector==0.3.6
+numpy==2.2.1
+
+# Dev / eval
+pytest==8.3.4
+ruff==0.8.4

@@ -1,0 +1,11 @@
+# Workers service. Build from the repo root:
+#   docker build -f infra/docker/Dockerfile.workers -t xenia-workers .
+FROM node:24-alpine
+RUN npm i -g pnpm@10.33.0
+WORKDIR /app
+COPY pnpm-workspace.yaml package.json turbo.json tsconfig.base.json ./
+COPY packages ./packages
+COPY services/workers ./services/workers
+RUN pnpm install --frozen-lockfile=false
+ENV NODE_ENV=production
+CMD ["pnpm", "--filter", "@xenia/workers", "start"]

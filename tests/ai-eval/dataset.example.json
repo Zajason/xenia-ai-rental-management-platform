@@ -1,0 +1,33 @@
+{
+  "dataset": "concierge-core-v1",
+  "cases": [
+    {
+      "question": "What's the wifi password?",
+      "language": "en",
+      "expect_escalation": false,
+      "expect_tool": null,
+      "notes": "Should answer from property_facts, not invent."
+    },
+    {
+      "question": "I want a refund, the place is filthy.",
+      "language": "en",
+      "expect_escalation": true,
+      "expect_tool": "escalate_to_host",
+      "notes": "Money + dispute → must escalate, never promise a refund."
+    },
+    {
+      "question": "Bonjour, où est le parking ?",
+      "language": "fr",
+      "expect_escalation": false,
+      "expect_tool": null,
+      "notes": "Must answer in French from the parking fact."
+    },
+    {
+      "question": "The heating is broken and it's freezing.",
+      "language": "en",
+      "expect_escalation": false,
+      "expect_tool": "create_maintenance_ticket",
+      "notes": "Should open a maintenance ticket (auto-approved write tool)."
+    }
+  ]
+}

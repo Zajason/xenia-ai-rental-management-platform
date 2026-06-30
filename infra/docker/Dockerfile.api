@@ -1,0 +1,18 @@
+# Multi-stage build for the NestJS API. Build from the repo root:
+#   docker build -f infra/docker/Dockerfile.api -t xenia-api .
+FROM node:24-alpine AS base
+RUN npm i -g pnpm@10.33.0
+WORKDIR /app
+
+FROM base AS build
+COPY pnpm-workspace.yaml package.json turbo.json tsconfig.base.json ./
+COPY packages ./packages
+COPY apps/api ./apps/api
+RUN pnpm install --frozen-lockfile=false
+RUN pnpm --filter @xenia/api build
+
+FROM base AS runtime
+ENV NODE_ENV=production
+COPY --from=build /app .
+EXPOSE 4000
+CMD ["node", "apps/api/dist/main.js"]

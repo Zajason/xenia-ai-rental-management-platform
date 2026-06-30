@@ -1,0 +1,42 @@
+{
+  "name": "xenia",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Xenia — the AI operating system for hospitality. Operational control plane for multi-property short-term rentals.",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "infra:up": "docker compose -f infra/compose/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/compose/docker-compose.yml down",
+    "infra:logs": "docker compose -f infra/compose/docker-compose.yml logs -f",
+    "setup:ai": "bash scripts/setup-ai.sh",
+    "dev:ai": "bash scripts/dev-ai.sh",
+    "db:generate": "pnpm --filter @xenia/db db:generate",
+    "db:migrate": "pnpm --filter @xenia/db db:migrate",
+    "db:push": "pnpm --filter @xenia/db db:push",
+    "db:seed": "pnpm --filter @xenia/db db:seed",
+    "db:studio": "pnpm --filter @xenia/db db:studio"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@scarf/scarf",
+      "esbuild",
+      "msgpackr-extract",
+      "protobufjs",
+      "sharp"
+    ]
+  }
+}

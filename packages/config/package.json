@@ -1,0 +1,11 @@
+{
+  "name": "@xenia/config",
+  "version": "0.0.1",
+  "private": true,
+  "files": ["tsconfig"],
+  "exports": {
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/nest.json": "./tsconfig/nest.json",
+    "./tsconfig/next.json": "./tsconfig/next.json"
+  }
+}
