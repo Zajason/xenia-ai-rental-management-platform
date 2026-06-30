@@ -1,13 +1,16 @@
 /**
- * Applies migrations in two passes, connecting as the PRIVILEGED role
- * (DATABASE_ADMIN_URL) so it can create extensions, roles, and constraints:
+ * Applies migrations, connecting as the PRIVILEGED role (DATABASE_ADMIN_URL) so
+ * it can create extensions, roles, and constraints:
+ *   0. ensure required extensions exist (the generated DDL declares a pgvector
+ *      column, so `vector` must be installed before pass 1)
  *   1. drizzle-kit generated SQL in ./migrations (the table DDL)
- *   2. hand-written SQL in ./migrations/manual (extensions, the range exclusion
- *      constraint, RLS policies, pgvector index, the non-superuser app role)
+ *   2. hand-written SQL in ./migrations/manual (the range exclusion constraint,
+ *      RLS policies, pgvector index, the non-superuser app role, auth functions)
  *
  * Run with: pnpm db:migrate
  */
 import 'dotenv/config';
+import { existsSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -28,14 +31,28 @@ async function run() {
   const pool = new pg.Pool({ connectionString: adminUrl });
   const db = drizzle(pool);
 
+  // 0. Extensions FIRST — the generated migration creates a `vector(1024)`
+  //    column, which requires the pgvector extension to already exist. Locally
+  //    the Docker init script provides these; CI's bare Postgres does not, so we
+  //    create them here to make `db:migrate` self-sufficient everywhere.
+  console.log('→ ensuring required extensions…');
+  await db.execute(
+    sql.raw(
+      'CREATE EXTENSION IF NOT EXISTS pgcrypto; ' +
+        'CREATE EXTENSION IF NOT EXISTS btree_gist; ' +
+        'CREATE EXTENSION IF NOT EXISTS vector;',
+    ),
+  );
+
   console.log('→ applying drizzle migrations…');
-  try {
+  if (existsSync(join(migrationsDir, 'meta', '_journal.json'))) {
+    // Let real errors propagate — do NOT swallow them (that masked this very bug).
     await migrate(db, { migrationsFolder: migrationsDir });
-  } catch (err) {
-    console.warn('  (no generated migrations yet — run `pnpm db:generate` first)');
+  } else {
+    console.warn('  (no generated migrations found — run `pnpm db:generate` first)');
   }
 
-  console.log('→ applying manual SQL (extensions, RLS, constraints, app role)…');
+  console.log('→ applying manual SQL (RLS, constraints, app role, auth fns)…');
   const files = (await readdir(manualDir)).filter((f) => f.endsWith('.sql')).sort();
   for (const file of files) {
     const text = await readFile(join(manualDir, file), 'utf8');
