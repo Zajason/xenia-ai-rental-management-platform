@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Xenia Dev Console</title>
+<style>
+  :root {
+    --bg:#0b1020; --panel:#131a2e; --panel2:#0f1526; --border:#233049;
+    --text:#e6ecf7; --muted:#93a0bd; --accent:#6ea8fe; --ok:#22c55e;
+    --warn:#f59e0b; --err:#ef4444; --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font:14px/1.45 ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; }
+  header { display:flex; align-items:center; gap:14px; padding:12px 20px;
+    border-bottom:1px solid var(--border); background:var(--panel); position:sticky; top:0; z-index:5; }
+  header h1 { font-size:16px; margin:0; }
+  header .tag { font-size:11px; color:var(--warn); border:1px solid var(--warn);
+    border-radius:99px; padding:1px 8px; }
+  header .right { margin-left:auto; color:var(--muted); font-size:12px; }
+  main { display:grid; grid-template-columns:320px 1fr 1fr; gap:14px; padding:14px 20px; align-items:start; }
+  @media (max-width:1200px){ main{ grid-template-columns:1fr 1fr; } }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px; }
+  .panel h2 { margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  button { background:#1c2740; color:var(--text); border:1px solid var(--border);
+    border-radius:8px; padding:7px 12px; cursor:pointer; font-size:13px; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:#0b1020; font-weight:600; border-color:var(--accent); }
+  button.small { padding:3px 8px; font-size:12px; }
+  input, select, textarea { width:100%; background:var(--panel2); color:var(--text);
+    border:1px solid var(--border); border-radius:8px; padding:7px 9px; font-size:13px; margin:3px 0 8px; }
+  textarea { font-family:var(--mono); font-size:12px; min-height:90px; }
+  label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .row { display:flex; gap:8px; }
+  .row > * { flex:1; }
+  .kv { font-family:var(--mono); font-size:12px; }
+  .kv div { display:flex; justify-content:space-between; gap:8px; padding:2px 0; border-bottom:1px dashed #1c2740; }
+  .kv .k { color:var(--muted); }
+  .kv .v { text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px; cursor:pointer; }
+  .badge { display:inline-block; min-width:38px; text-align:center; border-radius:6px;
+    font:600 11px/1.6 var(--mono); padding:0 6px; }
+  .b-ok { background:#052e16; color:var(--ok); }
+  .b-err { background:#450a0a; color:var(--err); }
+  .b-warn { background:#451a03; color:var(--warn); }
+  .b-run { background:#172554; color:var(--accent); }
+  .scenario { border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:var(--panel2); }
+  .scenario .top { display:flex; align-items:center; gap:10px; }
+  .scenario .top .name { font-weight:600; }
+  .scenario .top .desc { color:var(--muted); font-size:12px; flex:1; }
+  .steps { margin:8px 0 0; padding:0; list-style:none; font-family:var(--mono); font-size:12px; display:none; }
+  .steps li { padding:3px 0; display:flex; gap:8px; align-items:baseline; }
+  .steps .msg { color:var(--muted); }
+  .log-entry { border-bottom:1px solid #1c2740; padding:6px 0; font-family:var(--mono); font-size:12px; cursor:pointer; }
+  .log-entry .line { display:flex; gap:10px; align-items:baseline; }
+  .log-entry .path { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .log-entry pre { display:none; background:var(--panel2); border:1px solid var(--border);
+    border-radius:8px; padding:8px; overflow:auto; max-height:260px; margin:6px 0 2px; font-size:11px; }
+  .catalog-group { margin-bottom:6px; }
+  .catalog-group > .g { color:var(--accent); font-weight:600; font-size:12px; cursor:pointer; padding:4px 0; }
+  .catalog-group .eps { display:none; }
+  .ep { display:flex; gap:8px; font-family:var(--mono); font-size:12px; padding:3px 0; cursor:pointer; color:var(--muted); }
+  .ep:hover { color:var(--text); }
+  .m { width:52px; font-weight:700; }
+  .m-GET{color:var(--ok);} .m-POST{color:var(--accent);} .m-PATCH{color:var(--warn);} .m-DELETE{color:var(--err);}
+  #response pre { background:var(--panel2); border:1px solid var(--border); border-radius:8px;
+    padding:10px; overflow:auto; max-height:360px; font-size:12px; }
+  .hint { color:var(--muted); font-size:12px; margin:4px 0 10px; }
+  .col { display:flex; flex-direction:column; gap:14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Xenia — Dev Console</h1>
+  <span class="tag">internal · dev only</span>
+  <span class="right">API docs at <a href="/docs" target="_blank">/docs</a> · all calls use real auth</span>
+</header>
+
+<main>
+  <!-- ===================== LEFT: auth + context ===================== -->
+  <div class="col">
+    <section class="panel">
+      <h2>Session</h2>
+      <div id="who" class="hint">Not authenticated.</div>
+      <button class="primary" id="bootstrapBtn">⚡ Bootstrap demo org (register)</button>
+      <div style="height:10px"></div>
+      <label>email</label><input id="email" placeholder="owner@org.test" />
+      <label>password</label><input id="password" type="password" />
+      <div class="row">
+        <button id="loginBtn">Log in</button>
+        <button id="refreshBtn">Refresh</button>
+        <button id="logoutBtn">Log out</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Context <button class="small" style="float:right" id="clearCtx">clear</button></h2>
+      <div class="hint">Ids collected by scenario runs. Click a value to copy. Use as
+        <span class="kv">{{name}}</span> in the request builder.</div>
+      <div class="kv" id="ctx"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Tokens</h2>
+      <div class="kv" id="tokens"></div>
+    </section>
+  </div>
+
+  <!-- ===================== MIDDLE: scenarios ===================== -->
+  <div class="col">
+    <section class="panel">
+      <h2>Workload scenarios</h2>
+      <div class="hint">Each runs a real chained flow through the API and saves ids to the context.
+        Run top-to-bottom, or hit “Run everything”.</div>
+      <div id="scenarios"></div>
+      <button class="primary" id="runAll" style="width:100%">▶ Run everything (full demo)</button>
+    </section>
+  </div>
+
+  <!-- ===================== RIGHT: builder + log ===================== -->
+  <div class="col">
+    <section class="panel">
+      <h2>Request builder</h2>
+      <div class="row" style="align-items:flex-end">
+        <div style="flex:0 0 110px"><label>method</label>
+          <select id="rbMethod"><option>GET</option><option>POST</option><option>PATCH</option><option>DELETE</option></select></div>
+        <div><label>path</label><input id="rbPath" placeholder="/bookings" /></div>
+        <div style="flex:0 0 110px"><label>token</label>
+          <select id="rbToken"><option value="owner">owner</option><option value="cleaner">cleaner</option><option value="guest">guest</option><option value="none">none</option></select></div>
+      </div>
+      <label>headers (json, optional)</label>
+      <textarea id="rbHeaders" style="min-height:44px" placeholder='{"x-channel-secret":"{{channelAirbnbSecret}}"}'></textarea>
+      <label>body (json, optional — {{vars}} substituted)</label>
+      <textarea id="rbBody"></textarea>
+      <button class="primary" id="rbSend">Send</button>
+      <div id="response"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Endpoint catalog</h2>
+      <div id="catalog"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Request log <button class="small" style="float:right" id="clearLog">clear</button></h2>
+      <div id="log"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+'use strict';
+const $ = (s) => document.querySelector(s);
+const state = JSON.parse(localStorage.getItem('xenia-console') || '{"tokens":{},"ids":{}}');
+function persist(){ localStorage.setItem('xenia-console', JSON.stringify(state)); renderCtx(); }
+function daysFromNow(n){ const d = new Date(Date.now()+n*864e5); d.setUTCHours(12,0,0,0); return d.toISOString(); }
+function uniq(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function tpl(str){ return String(str).replace(/\{\{(\w+)\}\}/g, (m,k)=> state.ids[k] !== undefined ? state.ids[k] : m); }
+
+// ---------------------------------------------------------------- api client
+const logEntries = [];
+async function call(opts){
+  const { method='GET', path, body, token='owner', headers={} } = opts;
+  const h = {};
+  for (const k of Object.keys(headers)) h[k] = tpl(headers[k]); // {{vars}} in header values too
+  if (body !== undefined) h['content-type'] = 'application/json';
+  const tok = token !== 'none' ? state.tokens[token] : null;
+  if (tok) h['authorization'] = 'Bearer ' + tok;
+  const started = performance.now();
+  let res, json;
+  try {
+    res = await fetch(tpl(path), { method, headers:h, body: body!==undefined ? JSON.stringify(body) : undefined });
+    const text = await res.text();
+    try { json = text ? JSON.parse(text) : null; } catch { json = text; }
+  } catch (e) {
+    json = { error: String(e) }; res = { status: 0 };
+  }
+  const ms = Math.round(performance.now()-started);
+  logEntries.unshift({ method, path: tpl(path), status: res.status, ms, req: body ?? null, res: json });
+  if (logEntries.length > 200) logEntries.pop();
+  renderLog();
+  return { status: res.status, body: json };
+}
+
+// ---------------------------------------------------------------- scenarios
+const SCENARIOS = [
+  { key:'bootstrapEstate', name:'1 · Bootstrap estate',
+    desc:'Property, 2 units, wifi facts, smart lock, Airbnb + Booking.com channels, a vendor.',
+    run: async (step) => {
+      const p = await step('create property', { method:'POST', path:'/properties', body:{ name:'Santorini Cliff House', timezone:'Europe/Athens' }, expect:201, save:(b)=>({ propertyId:b.id }) });
+      await step('create unit A', { method:'POST', path:'/properties/'+p.id+'/units', body:{ name:'Caldera Suite', capacity:2 }, expect:201, save:(b)=>({ unitId:b.id }) });
+      await step('create unit B', { method:'POST', path:'/properties/'+p.id+'/units', body:{ name:'Sunset Villa', capacity:4 }, expect:201, save:(b)=>({ unitId2:b.id }) });
+      await step('add wifi fact', { method:'POST', path:'/units/{{unitId}}/facts', body:{ category:'wifi', key:'password', value:'sunset2024' }, expect:201 });
+      await step('register smart lock', { method:'POST', path:'/access/locks', body:{ unitId: state.ids.unitId }, expect:201, save:(b)=>({ lockId:b.id }) });
+      await step('create Airbnb channel', { method:'POST', path:'/channels', body:{ type:'airbnb', name:'Airbnb (dummy)' }, expect:201, save:(b)=>({ channelAirbnbId:b.id, channelAirbnbSecret:b.webhookSecret }) });
+      await step('create Booking.com channel', { method:'POST', path:'/channels', body:{ type:'booking', name:'Booking.com (dummy)' }, expect:201, save:(b)=>({ channelBookingId:b.id, channelBookingSecret:b.webhookSecret }) });
+      await step('create vendor', { method:'POST', path:'/vendors', body:{ name:'Yiannis Plumbing', trade:'plumber' }, expect:201, save:(b)=>({ vendorId:b.id }) });
+    }},
+
+  { key:'airbnbBooking', name:'2 · Airbnb booking arrives',
+    desc:'Dummy Airbnb posts a booking webhook → guest + booking + availability block.',
+    needs:['channelAirbnbId'],
+    run: async (step) => {
+      const ref = 'HM' + uniq().toUpperCase();
+      state.ids.externalRef = ref;
+      await step('webhook: booking.created', { method:'POST', path:'/webhooks/channels/{{orgId}}/{{channelAirbnbId}}',
+        headers:{ 'x-channel-secret':'{{channelAirbnbSecret}}' }, token:'none',
+        body:{ eventId:'evt_'+uniq(), type:'booking.created', externalRef:ref, unitId: state.ids.unitId,
+          checkIn: daysFromNow(20), checkOut: daysFromNow(25),
+          guest:{ name:'Marco Rossi', email:'marco_'+uniq()+'@guest.test', language:'it' } },
+        expect:200, check:(b)=> b.status==='processed', save:(b)=>({ bookingId:b.bookingId }) });
+      await step('read back booking + guest', { method:'GET', path:'/bookings', expect:200,
+        check:(b)=> Array.isArray(b) && b.length>0,
+        save:(b)=>({ guestId: b.find(x=>x.id===state.ids.bookingId)?.guestId }) });
+    }},
+
+  { key:'conflict', name:'3 · Conflicting Booking.com booking',
+    desc:'Overlapping dates from another channel → recorded as conflict, never double-booked.',
+    needs:['channelBookingId','bookingId'],
+    run: async (step) => {
+      await step('webhook: overlapping booking.created', { method:'POST', path:'/webhooks/channels/{{orgId}}/{{channelBookingId}}',
+        headers:{ 'x-channel-secret':'{{channelBookingSecret}}' }, token:'none',
+        body:{ eventId:'evt_'+uniq(), type:'booking.created', externalRef:'BDC'+uniq().toUpperCase(),
+          unitId: state.ids.unitId, checkIn: daysFromNow(22), checkOut: daysFromNow(24),
+          guest:{ name:'Sophie Dubois', email:'sophie_'+uniq()+'@guest.test' } },
+        expect:200, check:(b)=> b.status==='conflict' });
+      await step('conflict is in the audit trail', { method:'GET', path:'/audit?action=booking.conflict_detected', expect:200,
+        check:(b)=> b.length >= 1 });
+    }},
+
+  { key:'turnover', name:'4 · Cleaner turnover',
+    desc:'Invite a cleaner → accept → staff profile → task → assign → accept → complete → unit ready.',
+    needs:['unitId'],
+    run: async (step) => {
+      const email = 'cleaner_'+uniq()+'@console.test';
+      const inv = await step('invite cleaner', { method:'POST', path:'/auth/invitations', body:{ email, role:'cleaner' }, expect:201 });
+      const acc = await step('cleaner accepts invite', { method:'POST', path:'/auth/invitations/accept', token:'none',
+        body:{ token: inv.token, password:'CleanerPass1!', name:'Nikos' }, expect:200 });
+      state.tokens.cleaner = acc.accessToken; state.ids.cleanerUserId = acc.user.id; persist();
+      await step('create staff profile', { method:'POST', path:'/staff', body:{ name:'Nikos', role:'cleaner', userId: acc.user.id }, expect:201, save:(b)=>({ staffId:b.id }) });
+      await step('mark unit dirty', { method:'PATCH', path:'/units/{{unitId}}', body:{ status:'dirty' }, expect:200 });
+      await step('create cleaning task', { method:'POST', path:'/tasks', body:{ unitId: state.ids.unitId, type:'cleaning', dueAt: daysFromNow(1) }, expect:201, save:(b)=>({ taskId:b.id }) });
+      await step('assign to Nikos', { method:'POST', path:'/tasks/{{taskId}}/assign', body:{ staffId: state.ids.staffId }, expect:201 });
+      await step('cleaner accepts', { method:'POST', path:'/tasks/{{taskId}}/accept', token:'cleaner', expect:201, check:(b)=> b.status==='accepted' });
+      await step('cleaner completes (with photo)', { method:'POST', path:'/tasks/{{taskId}}/complete', token:'cleaner',
+        body:{ photos:['https://example.test/after.jpg'] }, expect:201, check:(b)=> b.status==='completed' });
+      await step('unit is ready again', { method:'GET', path:'/units', expect:200,
+        check:(b)=> b.find(u=>u.id===state.ids.unitId)?.status==='ready' });
+    }},
+
+  { key:'doorCode', name:'5 · Door code lifecycle',
+    desc:'Issue a time-boxed code for the booking (shown once), inspect events, revoke.',
+    needs:['bookingId'],
+    run: async (step) => {
+      const r = await step('issue credential for booking', { method:'POST', path:'/access/credentials',
+        body:{ bookingId: state.ids.bookingId }, expect:201, save:(b)=>({ credentialId:b.credential.id }) });
+      await step('door code: ' + r.code + ' (shown once!)', { method:'GET', path:'/access/credentials?bookingId={{bookingId}}', expect:200 });
+      await step('revoke credential', { method:'POST', path:'/access/credentials/{{credentialId}}/revoke', expect:201, check:(b)=> b.status==='revoked' });
+      await step('event trail (issued + revoked)', { method:'GET', path:'/access/credentials/{{credentialId}}/events', expect:200,
+        check:(b)=> b.some(e=>e.event==='issued') && b.some(e=>e.event==='revoked') });
+    }},
+
+  { key:'concierge', name:'6 · Guest asks the concierge',
+    desc:'Magic link → guest session → message. Live AI reply if the Python service runs; human handoff otherwise.',
+    needs:['guestId','unitId'],
+    run: async (step) => {
+      const ml = await step('issue guest magic link', { method:'POST', path:'/auth/magic-links',
+        body:{ subjectType:'guest', subjectId: state.ids.guestId }, expect:201 });
+      const v = await step('guest verifies link', { method:'POST', path:'/auth/magic-links/verify', token:'none',
+        body:{ token: ml.token }, expect:200 });
+      state.tokens.guest = v.accessToken; persist();
+      await step('open conversation', { method:'POST', path:'/conversations',
+        body:{ unitId: state.ids.unitId, guestId: state.ids.guestId, bookingId: state.ids.bookingId }, expect:201, save:(b)=>({ conversationId:b.id }) });
+      const msg = await step('guest: “What is the wifi password?”', { method:'POST', path:'/conversations/{{conversationId}}/messages',
+        token:'guest', body:{ body:'What is the wifi password?' }, expect:201 });
+      await step(msg.ai && msg.ai.escalated ? 'AI unavailable → escalated to host ✔' : 'AI replied: ' + (msg.ai && msg.ai.reply ? msg.ai.reply.slice(0,80) : '—'),
+        { method:'GET', path:'/conversations/{{conversationId}}/messages', expect:200 });
+    }},
+
+  { key:'maintenance', name:'7 · Maintenance + vendor payout',
+    desc:'Ticket → vendor assigned with door access → resolved → vendor paid in-app.',
+    needs:['vendorId','unitId'],
+    run: async (step) => {
+      await step('open ticket', { method:'POST', path:'/maintenance/tickets',
+        body:{ unitId: state.ids.unitId, title:'AC not cooling', priority:4 }, expect:201, save:(b)=>({ ticketId:b.id }) });
+      await step('assign vendor + grant access', { method:'POST', path:'/maintenance/tickets/{{ticketId}}/assign',
+        body:{ vendorId: state.ids.vendorId, scheduledAt: daysFromNow(2), grantAccess:true }, expect:201,
+        check:(b)=> Boolean(b.accessCredentialId) });
+      await step('resolve with cost', { method:'POST', path:'/maintenance/tickets/{{ticketId}}/resolve',
+        body:{ cost:120.5 }, expect:201, check:(b)=> b.status==='resolved' });
+      await step('pay the vendor €120.50', { method:'POST', path:'/billing/payouts',
+        body:{ payeeType:'vendor', payeeId: state.ids.vendorId, amount:120.5, ticketId: state.ids.ticketId, note:'AC repair' },
+        expect:201, check:(b)=> b.status==='paid' });
+    }},
+
+  { key:'pricing', name:'8 · Pricing suggestion',
+    desc:'Last-minute low-occupancy rule → explainable suggestion for tomorrow → accept.',
+    needs:['unitId'],
+    run: async (step) => {
+      await step('create rule (−15% last-minute)', { method:'POST', path:'/pricing/rules',
+        body:{ unitId: state.ids.unitId, name:'Last-minute low-occupancy', conditions:{ leadTimeDays:{ lt:3 }, occupancy:{ lt:0.5 } }, effect:{ adjustPct:-15 }, priority:10 }, expect:201 });
+      const s = await step('evaluate tomorrow @ base 100', { method:'POST', path:'/pricing/suggestions/evaluate',
+        body:{ unitId: state.ids.unitId, day: daysFromNow(1).slice(0,10), basePrice:100 }, expect:201, save:(b)=>({ suggestionId:b.id }) });
+      await step('suggested: ' + s.suggestedPrice + ' (rationale: ' + (s.rationale||[]).length + ' rule(s))',
+        { method:'POST', path:'/pricing/suggestions/{{suggestionId}}/accept', expect:201, check:(b)=> b.status==='accepted' });
+    }},
+
+  { key:'billing', name:'9 · Subscription + pay the cleaner',
+    desc:'Activate the Pro plan (per-unit metered), then pay Nikos for the turnover.',
+    needs:['staffId','taskId'],
+    run: async (step) => {
+      await step('checkout Pro plan', { method:'POST', path:'/billing/subscription/checkout',
+        body:{ plan:'pro' }, expect:201, check:(b)=> b.status==='active' });
+      await step('pay cleaner €45.50', { method:'POST', path:'/billing/payouts',
+        body:{ payeeType:'staff', payeeId: state.ids.staffId, amount:45.5, taskId: state.ids.taskId, note:'Turnover — Caldera Suite' },
+        expect:201, check:(b)=> b.status==='paid' && b.providerRef });
+      await step('payout history', { method:'GET', path:'/billing/payouts', expect:200, check:(b)=> b.length>=1 });
+    }},
+];
+
+function renderScenarios(){
+  const host = $('#scenarios'); host.innerHTML = '';
+  for (const sc of SCENARIOS) {
+    const el = document.createElement('div'); el.className = 'scenario';
+    el.innerHTML = '<div class="top"><span class="name">'+sc.name+'</span>'
+      + '<span class="desc">'+sc.desc+'</span>'
+      + '<button class="small" data-k="'+sc.key+'">Run</button></div><ul class="steps"></ul>';
+    host.appendChild(el);
+    el.querySelector('button').onclick = () => runScenario(sc, el);
+  }
+}
+
+async function runScenario(sc, el){
+  const list = el.querySelector('.steps'); list.style.display = 'block'; list.innerHTML = '';
+  if (!state.tokens.owner) { addStep(list,'err','no session — bootstrap or log in first'); return false; }
+  for (const need of sc.needs || []) {
+    if (!state.ids[need]) { addStep(list,'err','missing context "'+need+'" — run earlier scenarios first'); return false; }
+  }
+  const step = async (name, req) => {
+    const li = addStep(list,'run',name);
+    const r = await call(req);
+    const okStatus = req.expect ? r.status === req.expect : r.status < 400;
+    const okCheck = req.check ? !!req.check(r.body) : true;
+    if (!okStatus || !okCheck) {
+      setStep(li,'err', name+' — HTTP '+r.status+(okCheck?'':' (check failed)'));
+      throw new Error('step failed: '+name);
+    }
+    if (req.save) { Object.assign(state.ids, req.save(r.body) || {}); persist(); }
+    setStep(li,'ok', name);
+    return r.body;
+  };
+  try { await sc.run(step); addStep(list,'ok','— scenario complete —'); return true; }
+  catch (e) { addStep(list,'err', String(e.message||e)); return false; }
+}
+
+function addStep(list, kind, msg){
+  const li = document.createElement('li');
+  li.innerHTML = '<span class="badge b-'+kind+'">'+(kind==='ok'?'OK':kind==='err'?'ERR':'…')+'</span><span class="msg">'+msg+'</span>';
+  list.appendChild(li); return li;
+}
+function setStep(li, kind, msg){
+  li.innerHTML = '<span class="badge b-'+kind+'">'+(kind==='ok'?'OK':'ERR')+'</span><span class="msg">'+msg+'</span>';
+}
+
+$('#runAll').onclick = async () => {
+  for (const sc of SCENARIOS) {
+    const el = [...document.querySelectorAll('.scenario')][SCENARIOS.indexOf(sc)];
+    const ok = await runScenario(sc, el);
+    if (!ok) break;
+  }
+};
+
+// ---------------------------------------------------------------- auth
+function renderWho(){
+  const s = state.session;
+  $('#who').innerHTML = s
+    ? 'Signed in as <b>'+s.email+'</b> · org <b>'+s.orgSlug+'</b> · role <b>'+s.role+'</b>'
+    : 'Not authenticated.';
+  renderTokens();
+}
+function renderTokens(){
+  const host = $('#tokens'); host.innerHTML = '';
+  for (const k of ['owner','cleaner','guest']) {
+    const v = state.tokens[k];
+    const div = document.createElement('div');
+    div.innerHTML = '<span class="k">'+k+'</span><span class="v">'+(v ? v.slice(0,18)+'…' : '—')+'</span>';
+    host.appendChild(div);
+  }
+}
+
+$('#bootstrapBtn').onclick = async () => {
+  const id = uniq();
+  const email = 'owner_'+id+'@console.test', password = 'ConsolePass1!';
+  const r = await call({ method:'POST', path:'/auth/register', token:'none',
+    body:{ email, password, orgName:'Console Org '+id } });
+  if (r.status !== 201) return alert('register failed: '+JSON.stringify(r.body));
+  state.tokens.owner = r.body.accessToken;
+  state.refreshToken = r.body.refreshToken;
+  state.ids.orgId = r.body.org.id;
+  state.session = { email, orgSlug: r.body.org.slug, role: r.body.role };
+  $('#email').value = email; $('#password').value = password;
+  persist(); renderWho();
+};
+
+$('#loginBtn').onclick = async () => {
+  const r = await call({ method:'POST', path:'/auth/login', token:'none',
+    body:{ email: $('#email').value, password: $('#password').value } });
+  if (r.status !== 200) return alert('login failed: '+JSON.stringify(r.body));
+  state.tokens.owner = r.body.accessToken;
+  state.refreshToken = r.body.refreshToken;
+  state.ids.orgId = r.body.org.id;
+  state.session = { email: r.body.user.email, orgSlug: r.body.org.slug, role: r.body.role };
+  persist(); renderWho();
+};
+
+$('#refreshBtn').onclick = async () => {
+  if (!state.refreshToken) return alert('no refresh token');
+  const r = await call({ method:'POST', path:'/auth/refresh', token:'none', body:{ refreshToken: state.refreshToken } });
+  if (r.status !== 200) return alert('refresh failed');
+  state.tokens.owner = r.body.accessToken; state.refreshToken = r.body.refreshToken;
+  persist(); renderWho();
+};
+
+$('#logoutBtn').onclick = async () => {
+  if (state.refreshToken) await call({ method:'POST', path:'/auth/logout', token:'none', body:{ refreshToken: state.refreshToken } });
+  state.tokens = {}; state.refreshToken = null; state.session = null; persist(); renderWho();
+};
+
+// ---------------------------------------------------------------- context
+function renderCtx(){
+  const host = $('#ctx'); host.innerHTML = '';
+  const keys = Object.keys(state.ids);
+  if (!keys.length) { host.innerHTML = '<div class="hint">empty — run a scenario</div>'; return; }
+  for (const k of keys) {
+    const div = document.createElement('div');
+    div.innerHTML = '<span class="k">'+k+'</span><span class="v" title="click to copy">'+state.ids[k]+'</span>';
+    div.querySelector('.v').onclick = () => navigator.clipboard.writeText(String(state.ids[k]));
+    host.appendChild(div);
+  }
+}
+$('#clearCtx').onclick = () => { state.ids = {}; persist(); };
+
+// ---------------------------------------------------------------- catalog
+const CATALOG = [
+  { g:'auth', eps:[
+    ['POST','/auth/register',{ email:'a@b.test', password:'Password1!', orgName:'My Org' },'none'],
+    ['POST','/auth/login',{ email:'a@b.test', password:'Password1!' },'none'],
+    ['POST','/auth/refresh',{ refreshToken:'…' },'none'],
+    ['GET','/auth/me'],
+    ['POST','/auth/invitations',{ email:'new@org.test', role:'manager' }],
+    ['POST','/auth/invitations/accept',{ token:'…', password:'Password1!' },'none'],
+    ['POST','/auth/magic-links',{ subjectType:'guest', subjectId:'{{guestId}}' }],
+    ['POST','/auth/magic-links/verify',{ token:'…' },'none'],
+  ]},
+  { g:'property', eps:[
+    ['POST','/properties',{ name:'Villa', timezone:'Europe/Athens' }],
+    ['GET','/properties'], ['GET','/units'],
+    ['POST','/properties/{{propertyId}}/units',{ name:'Suite B', capacity:2 }],
+    ['PATCH','/units/{{unitId}}',{ status:'dirty' }],
+    ['POST','/units/{{unitId}}/facts',{ category:'wifi', key:'ssid', value:'Villa-5G' }],
+    ['GET','/units/{{unitId}}/facts'],
+  ]},
+  { g:'bookings & channels', eps:[
+    ['GET','/bookings'],
+    ['POST','/bookings/confirm',{ unitId:'{{unitId}}', checkIn:'2026-08-01T12:00:00Z', checkOut:'2026-08-05T12:00:00Z' }],
+    ['POST','/channels',{ type:'airbnb', name:'Airbnb' }], ['GET','/channels'],
+    ['POST','/webhooks/channels/{{orgId}}/{{channelAirbnbId}}',
+      { eventId:'evt_1', type:'booking.created', externalRef:'HMX', unitId:'{{unitId}}',
+        checkIn:'2026-08-10T12:00:00Z', checkOut:'2026-08-12T12:00:00Z',
+        guest:{ name:'G', email:'g@x.test' } },
+      'none', { 'x-channel-secret':'{{channelAirbnbSecret}}' }],
+  ]},
+  { g:'calendar', eps:[
+    ['GET','/calendar/units/{{unitId}}/blocks'],
+    ['POST','/calendar/blocks',{ unitId:'{{unitId}}', checkIn:'2026-09-01T12:00:00Z', checkOut:'2026-09-03T12:00:00Z' }],
+    ['GET','/calendar/units/{{unitId}}/availability?checkIn=2026-09-01T12:00:00Z&checkOut=2026-09-03T12:00:00Z'],
+  ]},
+  { g:'messaging & concierge', eps:[
+    ['POST','/conversations',{ unitId:'{{unitId}}', guestId:'{{guestId}}' }],
+    ['GET','/conversations'], ['GET','/conversations/{{conversationId}}/messages'],
+    ['POST','/conversations/{{conversationId}}/messages',{ body:'Hello!' }],
+    ['POST','/concierge/conversations/{{conversationId}}/respond'],
+  ]},
+  { g:'access', eps:[
+    ['POST','/access/locks',{ unitId:'{{unitId}}' }], ['GET','/access/locks'],
+    ['POST','/access/credentials',{ bookingId:'{{bookingId}}' }],
+    ['GET','/access/credentials'], ['POST','/access/credentials/{{credentialId}}/revoke'],
+    ['GET','/access/credentials/{{credentialId}}/events'],
+  ]},
+  { g:'tasks & staff', eps:[
+    ['POST','/staff',{ name:'Cleaner', role:'cleaner' }], ['GET','/staff'],
+    ['POST','/tasks',{ unitId:'{{unitId}}', type:'cleaning' }], ['GET','/tasks'],
+    ['POST','/tasks/{{taskId}}/assign',{ staffId:'{{staffId}}' }],
+    ['POST','/tasks/{{taskId}}/accept',null,'cleaner'],
+    ['POST','/tasks/{{taskId}}/complete',{ photos:[] },'cleaner'],
+  ]},
+  { g:'maintenance', eps:[
+    ['POST','/vendors',{ name:'Vendor', trade:'plumber' }], ['GET','/vendors'],
+    ['POST','/maintenance/tickets',{ unitId:'{{unitId}}', title:'Issue' }],
+    ['GET','/maintenance/tickets'],
+    ['POST','/maintenance/tickets/{{ticketId}}/assign',{ vendorId:'{{vendorId}}', grantAccess:false }],
+    ['POST','/maintenance/tickets/{{ticketId}}/resolve',{ cost:50 }],
+  ]},
+  { g:'notifications', eps:[
+    ['POST','/notifications',{ recipientRef:'guest:x@y.test', template:'pre_arrival', channels:['email'], dedupeKey:'k1' }],
+    ['GET','/notifications'],
+  ]},
+  { g:'pricing', eps:[
+    ['POST','/pricing/rules',{ unitId:'{{unitId}}', name:'Rule', conditions:{ leadTimeDays:{ lt:3 } }, effect:{ adjustPct:-10 }, priority:5 }],
+    ['GET','/pricing/rules'],
+    ['POST','/pricing/suggestions/evaluate',{ unitId:'{{unitId}}', day:'2026-08-01', basePrice:100 }],
+    ['GET','/pricing/suggestions'], ['POST','/pricing/suggestions/{{suggestionId}}/accept'],
+  ]},
+  { g:'workflows & audit', eps:[
+    ['POST','/workflows',{ name:'WF', triggerEvent:'booking.confirmed', definition:{ steps:[{ key:'clean', action:'tasks.createCleaning' }] } }],
+    ['GET','/workflows'], ['GET','/workflows/runs'],
+    ['GET','/audit?limit=50'],
+  ]},
+  { g:'billing', eps:[
+    ['GET','/billing/subscription'],
+    ['POST','/billing/subscription/checkout',{ plan:'pro' }],
+    ['POST','/billing/payouts',{ payeeType:'staff', payeeId:'{{staffId}}', amount:45.5 }],
+    ['GET','/billing/payouts'],
+    ['POST','/webhooks/billing',{ type:'invoice.paid', orgId:'{{orgId}}' },'none',{ 'x-billing-signature':'dev-billing-secret' }],
+  ]},
+];
+
+function renderCatalog(){
+  const host = $('#catalog'); host.innerHTML = '';
+  for (const grp of CATALOG) {
+    const el = document.createElement('div'); el.className = 'catalog-group';
+    el.innerHTML = '<div class="g">▸ '+grp.g+'</div><div class="eps"></div>';
+    const eps = el.querySelector('.eps');
+    el.querySelector('.g').onclick = () => { eps.style.display = eps.style.display==='block' ? 'none' : 'block'; };
+    for (const [method, path, body, token, headers] of grp.eps) {
+      const row = document.createElement('div'); row.className = 'ep';
+      row.innerHTML = '<span class="m m-'+method+'">'+method+'</span><span>'+path+'</span>';
+      row.onclick = () => {
+        $('#rbMethod').value = method; $('#rbPath').value = path;
+        $('#rbBody').value = body ? JSON.stringify(body, null, 2) : '';
+        $('#rbToken').value = token || 'owner';
+        $('#rbHeaders').value = headers ? JSON.stringify(headers, null, 2) : '';
+      };
+      eps.appendChild(row);
+    }
+    host.appendChild(el);
+  }
+}
+
+// ---------------------------------------------------------------- builder
+$('#rbSend').onclick = async () => {
+  let body, headers;
+  try { body = $('#rbBody').value.trim() ? JSON.parse(tpl($('#rbBody').value)) : undefined; }
+  catch (e) { return alert('body is not valid JSON'); }
+  try { headers = $('#rbHeaders').value.trim() ? JSON.parse(tpl($('#rbHeaders').value)) : {}; }
+  catch (e) { return alert('headers is not valid JSON'); }
+  const r = await call({ method:$('#rbMethod').value, path:$('#rbPath').value, body, headers, token:$('#rbToken').value });
+  $('#response').innerHTML = '<div class="hint">HTTP <span class="badge '+(r.status<400?'b-ok':'b-err')+'">'+r.status+'</span></div><pre>'
+    + escapeHtml(JSON.stringify(r.body, null, 2)) + '</pre>';
+};
+
+// ---------------------------------------------------------------- log
+function renderLog(){
+  const host = $('#log'); host.innerHTML = '';
+  for (const e of logEntries.slice(0, 40)) {
+    const el = document.createElement('div'); el.className = 'log-entry';
+    el.innerHTML = '<div class="line"><span class="badge '+(e.status<400 && e.status>0?'b-ok':'b-err')+'">'+e.status+'</span>'
+      + '<span class="m m-'+e.method+'">'+e.method+'</span><span class="path">'+e.path+'</span>'
+      + '<span style="color:var(--muted)">'+e.ms+'ms</span></div>'
+      + '<pre>req: '+escapeHtml(JSON.stringify(e.req))+'\n\nres: '+escapeHtml(JSON.stringify(e.res, null, 2))+'</pre>';
+    el.querySelector('.line').onclick = () => {
+      const pre = el.querySelector('pre'); pre.style.display = pre.style.display==='block' ? 'none' : 'block';
+    };
+    host.appendChild(el);
+  }
+}
+$('#clearLog').onclick = () => { logEntries.length = 0; renderLog(); };
+
+function escapeHtml(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// boot
+renderScenarios(); renderCatalog(); renderCtx(); renderWho(); renderLog();
+</script>
+</body>
+</html>

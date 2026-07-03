@@ -6,12 +6,13 @@ startTracing();
 
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  // Request validation is zod-based (ZodValidationPipe per route) — no
+  // class-validator global pipe needed.
   app.enableCors({ origin: true, credentials: true });
 
   const config = new DocumentBuilder()

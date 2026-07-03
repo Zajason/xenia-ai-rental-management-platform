@@ -64,6 +64,10 @@ pnpm db:seed
 
 # 4. run everything
 pnpm dev
+
+# 5. exercise the whole platform without a frontend:
+#    open http://localhost:4000/console — the internal dev console
+#    (scenario runner + request builder + endpoint catalog + request log)
 ```
 
 ## Feature scope (MVP)

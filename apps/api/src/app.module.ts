@@ -16,6 +16,7 @@ import { PricingModule } from './modules/pricing/pricing.module.js';
 import { WorkflowModule } from './modules/workflow/workflow.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
 import { BillingModule } from './modules/billing/billing.module.js';
+import { ConsoleModule } from './console/console.module.js';
 import { TenantMiddleware } from './common/tenant.middleware.js';
 import { DomainErrorFilter } from './common/domain-error.filter.js';
 
@@ -42,6 +43,7 @@ import { DomainErrorFilter } from './common/domain-error.filter.js';
     PricingModule,
     WorkflowModule,
     BillingModule,
+    ConsoleModule, // dev-only internal console at /console
   ],
   providers: [{ provide: APP_FILTER, useClass: DomainErrorFilter }],
 })
