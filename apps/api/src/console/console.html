@@ -475,6 +475,13 @@ const CATALOG = [
     ['POST','/calendar/blocks',{ unitId:'{{unitId}}', checkIn:'2026-09-01T12:00:00Z', checkOut:'2026-09-03T12:00:00Z' }],
     ['GET','/calendar/units/{{unitId}}/availability?checkIn=2026-09-01T12:00:00Z&checkOut=2026-09-03T12:00:00Z'],
   ]},
+  { g:'knowledge base (RAG)', eps:[
+    ['POST','/kb/documents',{ unitId:'{{unitId}}', title:'House Manual', content:'The boiler switch is in the hallway closet. Quiet hours 23:00–08:00.' }],
+    ['GET','/kb/documents?unitId={{unitId}}'],
+    ['POST','/kb/units/{{unitId}}/reindex'],
+    ['POST','/kb/reindex'],
+    ['GET','/kb/units/{{unitId}}/chunks'],
+  ]},
   { g:'messaging & concierge', eps:[
     ['POST','/conversations',{ unitId:'{{unitId}}', guestId:'{{guestId}}' }],
     ['GET','/conversations'], ['GET','/conversations/{{conversationId}}/messages'],

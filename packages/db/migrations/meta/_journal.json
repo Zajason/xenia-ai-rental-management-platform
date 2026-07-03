@@ -22,6 +22,13 @@
       "when": 1783076476095,
       "tag": "0002_small_wendell_vaughn",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783110834698,
+      "tag": "0003_careful_madrox",
+      "breakpoints": true
     }
   ]
 }

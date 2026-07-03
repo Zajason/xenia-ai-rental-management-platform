@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from .config import settings
 from .agent.loop import respond
 from .i18n.language import detect_language
+from .rag.ingest import reindex_org, reindex_unit
 
 app = FastAPI(title="Xenia AI Concierge", version="0.0.1")
 
@@ -39,6 +40,29 @@ class RespondResponse(BaseModel):
     confidence: float
     escalate: bool
     tool_calls: list[dict]
+
+
+class ReindexUnitRequest(BaseModel):
+    org_id: str
+    unit_id: str
+
+
+class ReindexOrgRequest(BaseModel):
+    org_id: str
+
+
+@app.post("/kb/reindex")
+async def kb_reindex_unit(req: ReindexUnitRequest) -> dict:
+    """Rebuild the knowledge base for one unit (call on unit setup / edits)."""
+    chunks = await reindex_unit(req.org_id, req.unit_id)
+    return {"ok": True, "unitId": req.unit_id, "chunks": chunks}
+
+
+@app.post("/kb/reindex-org")
+async def kb_reindex_org(req: ReindexOrgRequest) -> dict:
+    """Rebuild the KB for the whole org (units + shared docs) — good for seeding."""
+    result = await reindex_org(req.org_id)
+    return {"ok": True, **result}
 
 
 @app.post("/agent/respond", response_model=RespondResponse)

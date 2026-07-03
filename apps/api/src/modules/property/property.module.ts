@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { CurrentOrg } from '../../common/current-org.decorator.js';
 import { Roles } from '../../auth/decorators.js';
 import { ZodValidationPipe } from '../../auth/zod-validation.pipe.js';
+import { KbModule } from '../kb/kb.module.js';
 import { PropertyService } from './property.service.js';
 
 const createPropertySchema = z.object({
@@ -87,5 +88,10 @@ class PropertyController {
   }
 }
 
-@Module({ controllers: [PropertyController], providers: [PropertyService], exports: [PropertyService] })
+@Module({
+  imports: [KbModule],
+  controllers: [PropertyController],
+  providers: [PropertyService],
+  exports: [PropertyService],
+})
 export class PropertyModule {}

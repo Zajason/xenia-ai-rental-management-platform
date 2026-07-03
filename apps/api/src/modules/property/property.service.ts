@@ -1,8 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq, schema, withTenant } from '@xenia/db';
+import { KbService } from '../kb/kb.module.js';
 
 @Injectable()
 export class PropertyService {
+  constructor(private readonly kb: KbService) {}
+
   createProperty(orgId: string, input: { name: string; address?: string; timezone?: string }) {
     return withTenant(orgId, async (tx) => {
       const [row] = await tx
@@ -58,14 +61,18 @@ export class PropertyService {
     });
   }
 
-  addFact(orgId: string, unitId: string, input: { category: string; key: string; value: string }) {
-    return withTenant(orgId, async (tx) => {
-      const [row] = await tx
+  async addFact(orgId: string, unitId: string, input: { category: string; key: string; value: string }) {
+    const row = await withTenant(orgId, async (tx) => {
+      const [created] = await tx
         .insert(schema.propertyFacts)
         .values({ orgId, unitId, ...input })
         .returning();
-      return row;
+      return created;
     });
+    // A new/changed fact changes what the AI knows → rebuild that unit's index
+    // (fire-and-forget; best-effort if the AI service is down).
+    this.kb.reindexUnitAsync(orgId, unitId);
+    return row;
   }
 
   listFacts(orgId: string, unitId: string) {

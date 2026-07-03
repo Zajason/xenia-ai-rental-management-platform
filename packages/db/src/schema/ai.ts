@@ -44,11 +44,12 @@ export const kbChunks = pgTable('kb_chunks', {
     .notNull()
     .references(() => organizations.id, { onDelete: 'cascade' }),
   unitId: uuid('unit_id').references(() => units.id, { onDelete: 'cascade' }),
-  documentId: uuid('document_id')
-    .notNull()
-    .references(() => kbDocuments.id, { onDelete: 'cascade' }),
+  // Nullable: a chunk can come from a kb_document OR from a structured
+  // property_fact (which has no parent document).
+  documentId: uuid('document_id').references(() => kbDocuments.id, { onDelete: 'cascade' }),
   content: text('content').notNull(),
   embedding: vector('embedding', { dimensions: 1024 }),
+  /** e.g. {source:'fact',factId,category} or {source:'document',title}. */
   metadata: jsonb('metadata'),
   ...timestamps,
 });
