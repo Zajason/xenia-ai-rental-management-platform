@@ -15,6 +15,13 @@
       "when": 1782805753940,
       "tag": "0001_fluffy_menace",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783076476095,
+      "tag": "0002_small_wendell_vaughn",
+      "breakpoints": true
     }
   ]
 }

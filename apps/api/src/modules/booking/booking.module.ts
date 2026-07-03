@@ -2,6 +2,8 @@ import { Body, Controller, Get, Module, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { CurrentOrg } from '../../common/current-org.decorator.js';
 import { BookingService } from './booking.service.js';
+import { ChannelsController } from './channels.controller.js';
+import { ChannelsService } from './channels.service.js';
 
 @ApiTags('bookings')
 @Controller('bookings')
@@ -34,5 +36,9 @@ class BookingController {
   }
 }
 
-@Module({ controllers: [BookingController], providers: [BookingService], exports: [BookingService] })
+@Module({
+  controllers: [BookingController, ChannelsController],
+  providers: [BookingService, ChannelsService],
+  exports: [BookingService, ChannelsService],
+})
 export class BookingModule {}

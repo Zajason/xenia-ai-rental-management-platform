@@ -1,30 +1,52 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { BookingModule } from './modules/booking/booking.module.js';
+import { PropertyModule } from './modules/property/property.module.js';
+import { CalendarModule } from './modules/calendar/calendar.module.js';
+import { MessagingModule } from './modules/messaging/messaging.module.js';
+import { ConciergeModule } from './modules/concierge/concierge.module.js';
+import { AccessModule } from './modules/access/access.module.js';
+import { TasksModule } from './modules/tasks/tasks.module.js';
+import { MaintenanceModule } from './modules/maintenance/maintenance.module.js';
+import { NotificationModule } from './modules/notification/notification.module.js';
+import { PricingModule } from './modules/pricing/pricing.module.js';
+import { WorkflowModule } from './modules/workflow/workflow.module.js';
+import { AuditModule } from './modules/audit/audit.module.js';
+import { BillingModule } from './modules/billing/billing.module.js';
 import { TenantMiddleware } from './common/tenant.middleware.js';
+import { DomainErrorFilter } from './common/domain-error.filter.js';
 
 /**
- * The modular monolith root. Each bounded context is a Nest module under
- * src/modules/*. Today only Health and Booking are wired with real code; the
- * remaining context folders carry a README describing their responsibility and
- * are filled in per the roadmap (docs/architecture/roadmap.md).
- *
- * Hard rule: modules talk to each other through injected services or the event
- * bus — never by reaching into another context's tables.
+ * The modular monolith root. One Nest module per bounded context under
+ * src/modules/*; identity/auth under src/auth. Modules talk to each other
+ * through injected services or the event bus — never another context's tables.
  */
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     AuthModule,
+    AuditModule, // global: exposes AuditService everywhere
     HealthModule,
+    PropertyModule,
     BookingModule,
+    CalendarModule,
+    ConciergeModule,
+    MessagingModule,
+    AccessModule,
+    TasksModule,
+    MaintenanceModule,
+    NotificationModule,
+    PricingModule,
+    WorkflowModule,
+    BillingModule,
   ],
+  providers: [{ provide: APP_FILTER, useClass: DomainErrorFilter }],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // Resolve + set tenant context on every request except health/docs.
     consumer.apply(TenantMiddleware).forRoutes('*');
   }
 }

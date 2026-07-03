@@ -1,10 +1,11 @@
 # apps/api/src/modules — bounded contexts
 
-One folder per bounded context from the architecture. Each is (or becomes) a
-NestJS module. They communicate via injected services and the event bus, never by
-reading another context's tables. `health` and `booking` ship with working code;
-the rest carry a README defining responsibility, entities, events, and failure
-modes, and are implemented per `docs/architecture/roadmap.md`.
+One folder per bounded context from the architecture. Each is a NestJS module.
+They communicate via injected services and the event bus, never by reading
+another context's tables. **All modules are implemented** and covered by the e2e
+suites in `apps/api/test/` (identity/auth lives in `src/auth`). External
+integrations (channels, billing) run on dummy providers behind ports — see
+`docs/integrations/` for what real operation requires.
 
 | Module | Responsibility |
 |--------|----------------|

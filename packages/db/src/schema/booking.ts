@@ -35,6 +35,8 @@ export const channels = pgTable('channels', {
     .references(() => organizations.id, { onDelete: 'cascade' }),
   type: channelType('type').notNull(),
   name: text('name').notNull(),
+  /** Shared secret the channel must send in x-channel-secret on webhooks. */
+  webhookSecret: text('webhook_secret'),
   ...timestamps,
 });
 

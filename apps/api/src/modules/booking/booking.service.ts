@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
-import { withTenant, schema } from '@xenia/db';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { and, eq, schema, withTenant } from '@xenia/db';
 import { BookingConflictError } from '@xenia/shared';
+import { AuditService } from '../audit/audit.module.js';
 
 interface ConfirmBookingInput {
   unitId: string;
@@ -24,6 +24,8 @@ interface ConfirmBookingInput {
 @Injectable()
 export class BookingService {
   private readonly logger = new Logger(BookingService.name);
+
+  constructor(private readonly audit: AuditService) {}
 
   list(orgId: string) {
     return withTenant(orgId, (tx) => tx.select().from(schema.bookings));
@@ -68,6 +70,15 @@ export class BookingService {
         });
 
         return booking;
+      }).then(async (booking) => {
+        await this.audit.record(orgId, {
+          actorType: 'user',
+          action: 'booking.confirmed',
+          resourceType: 'booking',
+          resourceId: booking!.id,
+          after: { unitId: input.unitId, checkIn: input.checkIn, checkOut: input.checkOut },
+        });
+        return booking;
       });
     } catch (err) {
       // 23P01 = exclusion_violation → the unit is already booked for those dates.
@@ -77,6 +88,35 @@ export class BookingService {
       }
       throw err;
     }
+  }
+
+  /** Cancel a booking: frees its availability block and emits booking.cancelled. */
+  async cancel(orgId: string, bookingId: string) {
+    return withTenant(orgId, async (tx) => {
+      const [booking] = await tx
+        .update(schema.bookings)
+        .set({ status: 'cancelled' })
+        .where(eq(schema.bookings.id, bookingId))
+        .returning();
+      if (!booking) throw new NotFoundException('Booking not found');
+
+      await tx
+        .delete(schema.availabilityBlocks)
+        .where(
+          and(
+            eq(schema.availabilityBlocks.source, 'booking'),
+            eq(schema.availabilityBlocks.sourceId, bookingId),
+          ),
+        );
+
+      await tx.insert(schema.outbox).values({
+        orgId,
+        aggregate: 'booking',
+        eventType: 'booking.cancelled',
+        payload: { bookingId },
+      });
+      return booking;
+    });
   }
 
   getForUnit(orgId: string, unitId: string) {

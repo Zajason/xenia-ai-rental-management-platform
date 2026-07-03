@@ -1,4 +1,4 @@
-import { eq, db, schema, withTenant } from '@xenia/db';
+import { and, eq, db, schema, withTenant } from '@xenia/db';
 
 /**
  * The workflow engine — the conductor. It consumes a domain event, finds the
@@ -60,11 +60,13 @@ export async function runWorkflowsFor(
   orgId: string,
   payload: Record<string, unknown>,
 ): Promise<void> {
+  // NB: the org filter must be EXPLICIT — workers run with BYPASSRLS, so the
+  // usual RLS tenant scoping does not apply to them.
   const workflows = await withTenant(orgId, (tx) =>
     tx
       .select()
       .from(schema.workflows)
-      .where(eq(schema.workflows.triggerEvent, triggerEvent)),
+      .where(and(eq(schema.workflows.orgId, orgId), eq(schema.workflows.triggerEvent, triggerEvent))),
   );
 
   for (const wf of workflows) {

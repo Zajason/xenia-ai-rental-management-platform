@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './env.js'; // must be first — selects the BYPASSRLS worker DB role
 import { ensureGroup, redis, streamKey } from './bus.js';
 import { startOutboxRelay } from './outbox-relay.js';
 import { runWorkflowsFor } from './workflow-engine/engine.js';
