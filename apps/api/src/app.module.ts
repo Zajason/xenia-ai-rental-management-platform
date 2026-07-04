@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { join } from 'node:path';
 import { AuthModule } from './auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { BookingModule } from './modules/booking/booking.module.js';
@@ -28,7 +29,9 @@ import { DomainErrorFilter } from './common/domain-error.filter.js';
  */
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    // Load the repo-root .env (this module lives at apps/api/{src,dist}, so the
+    // root is three levels up) — regardless of the cwd the API is started from.
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '.env') }),
     AuthModule,
     AuditModule, // global: exposes AuditService everywhere
     HealthModule,

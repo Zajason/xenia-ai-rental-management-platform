@@ -3,150 +3,292 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Xenia Dev Console</title>
+<title>Xenia · Operations Console</title>
 <style>
   :root {
-    --bg:#0b1020; --panel:#131a2e; --panel2:#0f1526; --border:#233049;
-    --text:#e6ecf7; --muted:#93a0bd; --accent:#6ea8fe; --ok:#22c55e;
-    --warn:#f59e0b; --err:#ef4444; --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --bg:#0a0e17; --surface:#111726; --surface-2:#0d121e; --raised:#161d2f;
+    --border:#1e2740; --border-2:#2a3550;
+    --text:#e8edf6; --muted:#8794ad; --faint:#5b6680;
+    --accent:#5b9bff; --accent-2:#3d7ff0;
+    --ok:#34d399; --warn:#fbbf24; --err:#f87171; --purple:#a78bfa;
+    --mono:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --radius:10px;
   }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--text);
-    font:14px/1.45 ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; }
-  header { display:flex; align-items:center; gap:14px; padding:12px 20px;
-    border-bottom:1px solid var(--border); background:var(--panel); position:sticky; top:0; z-index:5; }
-  header h1 { font-size:16px; margin:0; }
-  header .tag { font-size:11px; color:var(--warn); border:1px solid var(--warn);
-    border-radius:99px; padding:1px 8px; }
-  header .right { margin-left:auto; color:var(--muted); font-size:12px; }
-  main { display:grid; grid-template-columns:320px 1fr 1fr; gap:14px; padding:14px 20px; align-items:start; }
-  @media (max-width:1200px){ main{ grid-template-columns:1fr 1fr; } }
-  .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px; }
-  .panel h2 { margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
-  button { background:#1c2740; color:var(--text); border:1px solid var(--border);
-    border-radius:8px; padding:7px 12px; cursor:pointer; font-size:13px; }
-  button:hover { border-color:var(--accent); }
-  button.primary { background:var(--accent); color:#0b1020; font-weight:600; border-color:var(--accent); }
-  button.small { padding:3px 8px; font-size:12px; }
-  input, select, textarea { width:100%; background:var(--panel2); color:var(--text);
-    border:1px solid var(--border); border-radius:8px; padding:7px 9px; font-size:13px; margin:3px 0 8px; }
-  textarea { font-family:var(--mono); font-size:12px; min-height:90px; }
-  label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  html,body { height:100%; }
+  body { margin:0; background:var(--bg); color:var(--text); font:13.5px/1.5 var(--sans);
+    -webkit-font-smoothing:antialiased; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  code, .mono { font-family:var(--mono); }
+
+  /* ---------- top bar ---------- */
+  .topbar { display:flex; align-items:center; gap:16px; height:52px; padding:0 20px;
+    background:linear-gradient(180deg,#121a2c,#0e1420); border-bottom:1px solid var(--border);
+    position:sticky; top:0; z-index:20; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:650; letter-spacing:.2px; }
+  .logo { width:26px; height:26px; border-radius:7px; display:grid; place-items:center;
+    background:linear-gradient(135deg,var(--accent),var(--purple)); color:#0a0e17; font-weight:800; font-size:15px; }
+  .brand .sub { color:var(--muted); font-weight:500; font-size:12px; padding-left:10px; margin-left:2px;
+    border-left:1px solid var(--border-2); }
+  .env-badge { font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--warn);
+    border:1px solid #4a3a10; background:#241c07; border-radius:6px; padding:2px 7px; font-weight:600; }
+  .topbar .spacer { flex:1; }
+  .health { display:flex; align-items:center; gap:8px; }
+  .pill { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--muted);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:3px 10px; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--faint); flex:none; }
+  .dot.on { background:var(--ok); box-shadow:0 0 0 3px rgba(52,211,153,.15); }
+  .dot.off { background:var(--err); box-shadow:0 0 0 3px rgba(248,113,113,.12); }
+
+  /* ---------- layout ---------- */
+  .grid { display:grid; grid-template-columns:288px minmax(420px,1fr) minmax(420px,1fr);
+    gap:16px; padding:16px 20px; align-items:start; }
+  @media (max-width:1240px){ .grid{ grid-template-columns:1fr 1fr; } .col-left{ grid-column:1/-1; } }
+  @media (max-width:820px){ .grid{ grid-template-columns:1fr; } }
+  .col { display:flex; flex-direction:column; gap:16px; }
+
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    overflow:hidden; }
+  .card-h { display:flex; align-items:center; gap:8px; padding:11px 14px; border-bottom:1px solid var(--border);
+    background:var(--surface-2); }
+  .card-h h2 { margin:0; font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted);
+    font-weight:650; }
+  .card-h .sub { color:var(--faint); font-size:11px; font-weight:500; }
+  .card-h .actions { margin-left:auto; display:flex; gap:6px; }
+  .card-b { padding:14px; }
+  .card-b.tight { padding:8px 10px; }
+
+  /* ---------- controls ---------- */
+  button { font-family:inherit; background:var(--raised); color:var(--text); border:1px solid var(--border-2);
+    border-radius:8px; padding:7px 12px; cursor:pointer; font-size:12.5px; font-weight:550; transition:.12s; }
+  button:hover { border-color:var(--accent); background:#1a2338; }
+  button:active { transform:translateY(1px); }
+  button.primary { background:linear-gradient(180deg,var(--accent),var(--accent-2)); color:#08101f;
+    border-color:var(--accent-2); font-weight:650; }
+  button.primary:hover { filter:brightness(1.06); }
+  button.ghost { background:transparent; }
+  button.xs { padding:3px 8px; font-size:11px; }
+  button.block { width:100%; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+
+  input, select, textarea { width:100%; background:var(--surface-2); color:var(--text);
+    border:1px solid var(--border-2); border-radius:8px; padding:8px 10px; font-size:12.5px; font-family:inherit; }
+  input:focus, select:focus, textarea:focus { outline:none; border-color:var(--accent); }
+  textarea { font-family:var(--mono); font-size:12px; min-height:88px; resize:vertical; }
+  label { display:block; font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;
+    margin:0 0 4px; font-weight:600; }
+  .field { margin-bottom:10px; }
   .row { display:flex; gap:8px; }
   .row > * { flex:1; }
-  .kv { font-family:var(--mono); font-size:12px; }
-  .kv div { display:flex; justify-content:space-between; gap:8px; padding:2px 0; border-bottom:1px dashed #1c2740; }
+  .hint { color:var(--muted); font-size:11.5px; line-height:1.5; }
+  .hint code { color:var(--accent); background:var(--surface-2); padding:1px 5px; border-radius:4px; }
+
+  /* ---------- session ---------- */
+  .who { display:flex; align-items:center; gap:8px; font-size:12.5px; padding-bottom:12px; }
+  .who .avatar { width:24px; height:24px; border-radius:50%; background:var(--raised); border:1px solid var(--border-2);
+    display:grid; place-items:center; font-size:11px; color:var(--muted); }
+  .who b { color:var(--text); }
+  .role-tag { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--accent);
+    border:1px solid var(--border-2); border-radius:5px; padding:1px 6px; }
+
+  /* ---------- key/value lists ---------- */
+  .kv { font-family:var(--mono); font-size:11.5px; }
+  .kv .r { display:flex; justify-content:space-between; gap:10px; padding:4px 0; border-bottom:1px solid var(--surface-2); }
+  .kv .r:last-child { border-bottom:none; }
   .kv .k { color:var(--muted); }
-  .kv .v { text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px; cursor:pointer; }
-  .badge { display:inline-block; min-width:38px; text-align:center; border-radius:6px;
-    font:600 11px/1.6 var(--mono); padding:0 6px; }
-  .b-ok { background:#052e16; color:var(--ok); }
-  .b-err { background:#450a0a; color:var(--err); }
-  .b-warn { background:#451a03; color:var(--warn); }
-  .b-run { background:#172554; color:var(--accent); }
-  .scenario { border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:var(--panel2); }
-  .scenario .top { display:flex; align-items:center; gap:10px; }
-  .scenario .top .name { font-weight:600; }
-  .scenario .top .desc { color:var(--muted); font-size:12px; flex:1; }
-  .steps { margin:8px 0 0; padding:0; list-style:none; font-family:var(--mono); font-size:12px; display:none; }
-  .steps li { padding:3px 0; display:flex; gap:8px; align-items:baseline; }
-  .steps .msg { color:var(--muted); }
-  .log-entry { border-bottom:1px solid #1c2740; padding:6px 0; font-family:var(--mono); font-size:12px; cursor:pointer; }
-  .log-entry .line { display:flex; gap:10px; align-items:baseline; }
-  .log-entry .path { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .log-entry pre { display:none; background:var(--panel2); border:1px solid var(--border);
-    border-radius:8px; padding:8px; overflow:auto; max-height:260px; margin:6px 0 2px; font-size:11px; }
-  .catalog-group { margin-bottom:6px; }
-  .catalog-group > .g { color:var(--accent); font-weight:600; font-size:12px; cursor:pointer; padding:4px 0; }
-  .catalog-group .eps { display:none; }
-  .ep { display:flex; gap:8px; font-family:var(--mono); font-size:12px; padding:3px 0; cursor:pointer; color:var(--muted); }
-  .ep:hover { color:var(--text); }
-  .m { width:52px; font-weight:700; }
+  .kv .v { color:var(--text); max-width:170px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    cursor:pointer; }
+  .kv .v:hover { color:var(--accent); }
+
+  /* ---------- services ---------- */
+  .svc { display:flex; align-items:center; gap:8px; font-size:12px; padding:5px 0; }
+  .svc .name { color:var(--muted); width:88px; }
+  .svc .val { color:var(--text); }
+  .svc .val.mut { color:var(--faint); }
+
+  /* ---------- scenarios ---------- */
+  .toolbar { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border);
+    background:var(--surface-2); }
+  .toolbar .prog { flex:1; color:var(--muted); font-size:11.5px; }
+  .scn { border-bottom:1px solid var(--border); }
+  .scn:last-child { border-bottom:none; }
+  .scn-h { display:flex; align-items:center; gap:11px; padding:11px 14px; cursor:pointer; }
+  .scn-h:hover { background:var(--surface-2); }
+  .num { width:24px; height:24px; border-radius:7px; background:var(--raised); border:1px solid var(--border-2);
+    display:grid; place-items:center; font-size:11px; font-weight:700; color:var(--muted); flex:none; }
+  .scn.ai .num { background:#1a1830; border-color:#33306a; color:var(--purple); }
+  .scn-meta { flex:1; min-width:0; }
+  .scn-meta .t { font-weight:600; font-size:13px; }
+  .scn-meta .d { color:var(--muted); font-size:11.5px; margin-top:1px; }
+  .scn-h .status { flex:none; }
+  .scn-run { flex:none; }
+  .steps { list-style:none; margin:0; padding:2px 14px 12px 49px; font-family:var(--mono); font-size:11.5px;
+    display:none; }
+  .steps.open { display:block; }
+  .steps li { display:flex; gap:9px; align-items:baseline; padding:2.5px 0; color:var(--muted); }
+  .steps li .msg { color:#aab6cf; }
+
+  .badge { display:inline-grid; place-items:center; min-width:34px; height:17px; border-radius:5px;
+    font:700 10px/1 var(--mono); text-transform:uppercase; letter-spacing:.03em; padding:0 5px; }
+  .b-ok { background:rgba(52,211,153,.13); color:var(--ok); }
+  .b-err { background:rgba(248,113,113,.13); color:var(--err); }
+  .b-warn { background:rgba(251,191,36,.13); color:var(--warn); }
+  .b-run { background:rgba(91,155,255,.13); color:var(--accent); }
+  .status-dot { width:9px; height:9px; border-radius:50%; background:var(--faint); }
+  .status-dot.ok { background:var(--ok); } .status-dot.err { background:var(--err); }
+  .status-dot.run { background:var(--accent); animation:pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity:.35; } }
+
+  /* ---------- concierge chat ---------- */
+  .chat { display:flex; flex-direction:column; gap:9px; max-height:260px; overflow:auto; padding:2px; }
+  .bubble { max-width:82%; padding:8px 11px; border-radius:12px; font-size:12.5px; line-height:1.45; }
+  .bubble.guest { align-self:flex-end; background:var(--accent); color:#08101f; border-bottom-right-radius:4px; }
+  .bubble.ai { align-self:flex-start; background:var(--raised); border:1px solid var(--border-2);
+    border-bottom-left-radius:4px; }
+  .bubble.sys { align-self:center; background:transparent; color:var(--warn); font-size:11.5px; }
+  .bubble .who { font-size:9.5px; text-transform:uppercase; letter-spacing:.06em; opacity:.7; margin-bottom:2px;
+    padding:0; }
+  .chat-empty { color:var(--faint); font-size:12px; text-align:center; padding:20px 0; }
+  .ask-row { display:flex; gap:8px; margin-top:10px; }
+  .ask-row input { flex:1; }
+
+  /* ---------- catalog ---------- */
+  .cat-g > .g { display:flex; align-items:center; gap:6px; color:var(--text); font-weight:600; font-size:12px;
+    cursor:pointer; padding:6px 4px; border-radius:6px; }
+  .cat-g > .g:hover { background:var(--surface-2); }
+  .cat-g .chev { color:var(--faint); font-size:10px; transition:.15s; }
+  .cat-g.open .chev { transform:rotate(90deg); }
+  .eps { display:none; padding:0 0 4px 16px; }
+  .cat-g.open .eps { display:block; }
+  .ep { display:flex; gap:9px; align-items:center; font-family:var(--mono); font-size:11.5px; padding:3.5px 6px;
+    cursor:pointer; color:var(--muted); border-radius:6px; }
+  .ep:hover { color:var(--text); background:var(--surface-2); }
+  .m { width:46px; font-weight:700; font-size:10.5px; flex:none; }
   .m-GET{color:var(--ok);} .m-POST{color:var(--accent);} .m-PATCH{color:var(--warn);} .m-DELETE{color:var(--err);}
-  #response pre { background:var(--panel2); border:1px solid var(--border); border-radius:8px;
-    padding:10px; overflow:auto; max-height:360px; font-size:12px; }
-  .hint { color:var(--muted); font-size:12px; margin:4px 0 10px; }
-  .col { display:flex; flex-direction:column; gap:14px; }
+
+  /* ---------- response + log ---------- */
+  pre.out { background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:10px;
+    overflow:auto; max-height:340px; font-size:11.5px; margin:10px 0 0; }
+  .log { font-family:var(--mono); font-size:11.5px; }
+  .log-e { border-bottom:1px solid var(--surface-2); }
+  .log-e .line { display:flex; gap:9px; align-items:center; padding:6px 4px; cursor:pointer; border-radius:6px; }
+  .log-e .line:hover { background:var(--surface-2); }
+  .log-e .path { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .log-e .ms { color:var(--faint); font-size:10.5px; }
+  .log-e pre { display:none; }
+  .status-num { min-width:30px; text-align:center; font-weight:700; }
+  .s2 { color:var(--ok); } .s4, .s5, .s0 { color:var(--err); }
+  .scrollcap { max-height:420px; overflow:auto; }
 </style>
 </head>
 <body>
-<header>
-  <h1>Xenia — Dev Console</h1>
-  <span class="tag">internal · dev only</span>
-  <span class="right">API docs at <a href="/docs" target="_blank">/docs</a> · all calls use real auth</span>
-</header>
 
-<main>
-  <!-- ===================== LEFT: auth + context ===================== -->
-  <div class="col">
-    <section class="panel">
-      <h2>Session</h2>
-      <div id="who" class="hint">Not authenticated.</div>
-      <button class="primary" id="bootstrapBtn">⚡ Bootstrap demo org (register)</button>
-      <div style="height:10px"></div>
-      <label>email</label><input id="email" placeholder="owner@org.test" />
-      <label>password</label><input id="password" type="password" />
-      <div class="row">
-        <button id="loginBtn">Log in</button>
-        <button id="refreshBtn">Refresh</button>
-        <button id="logoutBtn">Log out</button>
+<div class="topbar">
+  <div class="brand"><span class="logo">X</span> Xenia <span class="sub">Operations Console</span></div>
+  <span class="env-badge" id="envBadge">dev</span>
+  <div class="spacer"></div>
+  <div class="health" id="health">
+    <span class="pill"><span class="dot"></span> loading…</span>
+  </div>
+  <a href="/docs" target="_blank">API reference ↗</a>
+</div>
+
+<div class="grid">
+  <!-- ============ LEFT ============ -->
+  <div class="col col-left">
+    <section class="card">
+      <div class="card-h"><h2>Session</h2></div>
+      <div class="card-b">
+        <div class="who" id="who"><span class="avatar">?</span><span class="hint">Not authenticated</span></div>
+        <button class="primary block" id="bootstrapBtn">Bootstrap demo organization</button>
+        <div style="height:12px"></div>
+        <div class="field"><label>email</label><input id="email" placeholder="owner@org.test" autocomplete="off" /></div>
+        <div class="field"><label>password</label><input id="password" type="password" autocomplete="off" /></div>
+        <div class="row">
+          <button id="loginBtn">Log in</button>
+          <button class="ghost" id="refreshBtn">Refresh</button>
+          <button class="ghost" id="logoutBtn">Log out</button>
+        </div>
       </div>
     </section>
 
-    <section class="panel">
-      <h2>Context <button class="small" style="float:right" id="clearCtx">clear</button></h2>
-      <div class="hint">Ids collected by scenario runs. Click a value to copy. Use as
-        <span class="kv">{{name}}</span> in the request builder.</div>
-      <div class="kv" id="ctx"></div>
+    <section class="card">
+      <div class="card-h"><h2>Services</h2></div>
+      <div class="card-b" id="services"><div class="hint">checking…</div></div>
     </section>
 
-    <section class="panel">
-      <h2>Tokens</h2>
-      <div class="kv" id="tokens"></div>
+    <section class="card">
+      <div class="card-h"><h2>Context</h2><div class="actions"><button class="xs ghost" id="clearCtx">clear</button></div></div>
+      <div class="card-b">
+        <div class="hint" style="margin-bottom:8px">Ids from scenario runs. Click to copy · reuse as <code>{{name}}</code> in the request builder.</div>
+        <div class="kv" id="ctx"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h2>Tokens</h2></div>
+      <div class="card-b"><div class="kv" id="tokens"></div></div>
     </section>
   </div>
 
-  <!-- ===================== MIDDLE: scenarios ===================== -->
+  <!-- ============ MIDDLE ============ -->
   <div class="col">
-    <section class="panel">
-      <h2>Workload scenarios</h2>
-      <div class="hint">Each runs a real chained flow through the API and saves ids to the context.
-        Run top-to-bottom, or hit “Run everything”.</div>
+    <section class="card">
+      <div class="card-h"><h2>Workloads</h2><div class="sub">chained flows through the live API</div></div>
+      <div class="toolbar">
+        <button class="primary xs" id="runAll">▶ Run all</button>
+        <button class="ghost xs" id="resetAll">Reset</button>
+        <span class="prog" id="prog"></span>
+      </div>
       <div id="scenarios"></div>
-      <button class="primary" id="runAll" style="width:100%">▶ Run everything (full demo)</button>
     </section>
-  </div>
 
-  <!-- ===================== RIGHT: builder + log ===================== -->
-  <div class="col">
-    <section class="panel">
-      <h2>Request builder</h2>
-      <div class="row" style="align-items:flex-end">
-        <div style="flex:0 0 110px"><label>method</label>
-          <select id="rbMethod"><option>GET</option><option>POST</option><option>PATCH</option><option>DELETE</option></select></div>
-        <div><label>path</label><input id="rbPath" placeholder="/bookings" /></div>
-        <div style="flex:0 0 110px"><label>token</label>
-          <select id="rbToken"><option value="owner">owner</option><option value="cleaner">cleaner</option><option value="guest">guest</option><option value="none">none</option></select></div>
+    <section class="card">
+      <div class="card-h"><h2>AI Concierge</h2><div class="sub">retrieval-augmented answers</div></div>
+      <div class="card-b">
+        <div class="chat" id="chat"><div class="chat-empty">Run “Guest asks the concierge”, or ask below.</div></div>
+        <div class="ask-row">
+          <input id="askInput" placeholder="Ask as the guest… (e.g. what is the wifi password?)" />
+          <button class="primary" id="askBtn">Ask</button>
+        </div>
+        <div class="hint" style="margin-top:6px" id="askHint"></div>
       </div>
-      <label>headers (json, optional)</label>
-      <textarea id="rbHeaders" style="min-height:44px" placeholder='{"x-channel-secret":"{{channelAirbnbSecret}}"}'></textarea>
-      <label>body (json, optional — {{vars}} substituted)</label>
-      <textarea id="rbBody"></textarea>
-      <button class="primary" id="rbSend">Send</button>
-      <div id="response"></div>
-    </section>
-
-    <section class="panel">
-      <h2>Endpoint catalog</h2>
-      <div id="catalog"></div>
-    </section>
-
-    <section class="panel">
-      <h2>Request log <button class="small" style="float:right" id="clearLog">clear</button></h2>
-      <div id="log"></div>
     </section>
   </div>
-</main>
+
+  <!-- ============ RIGHT ============ -->
+  <div class="col">
+    <section class="card">
+      <div class="card-h"><h2>Request builder</h2></div>
+      <div class="card-b">
+        <div class="row" style="margin-bottom:10px">
+          <div style="flex:0 0 96px"><label>method</label>
+            <select id="rbMethod"><option>GET</option><option>POST</option><option>PATCH</option><option>DELETE</option></select></div>
+          <div style="flex:1"><label>path</label><input id="rbPath" placeholder="/bookings" /></div>
+          <div style="flex:0 0 92px"><label>as</label>
+            <select id="rbToken"><option value="owner">owner</option><option value="cleaner">cleaner</option><option value="guest">guest</option><option value="none">none</option></select></div>
+        </div>
+        <div class="field"><label>headers (json)</label>
+          <textarea id="rbHeaders" style="min-height:42px" placeholder='{"x-channel-secret":"{{channelAirbnbSecret}}"}'></textarea></div>
+        <div class="field"><label>body (json · {{vars}} substituted)</label><textarea id="rbBody"></textarea></div>
+        <button class="primary block" id="rbSend">Send request</button>
+        <div id="response"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h2>Endpoint catalog</h2><div class="sub" id="catCount"></div></div>
+      <div class="card-b tight scrollcap" id="catalog"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h2>Request log</h2><div class="actions"><button class="xs ghost" id="clearLog">clear</button></div></div>
+      <div class="card-b tight scrollcap"><div class="log" id="log"></div></div>
+    </section>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -156,13 +298,14 @@ function persist(){ localStorage.setItem('xenia-console', JSON.stringify(state))
 function daysFromNow(n){ const d = new Date(Date.now()+n*864e5); d.setUTCHours(12,0,0,0); return d.toISOString(); }
 function uniq(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 function tpl(str){ return String(str).replace(/\{\{(\w+)\}\}/g, (m,k)=> state.ids[k] !== undefined ? state.ids[k] : m); }
+function escapeHtml(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // ---------------------------------------------------------------- api client
 const logEntries = [];
 async function call(opts){
   const { method='GET', path, body, token='owner', headers={} } = opts;
   const h = {};
-  for (const k of Object.keys(headers)) h[k] = tpl(headers[k]); // {{vars}} in header values too
+  for (const k of Object.keys(headers)) h[k] = tpl(headers[k]);
   if (body !== undefined) h['content-type'] = 'application/json';
   const tok = token !== 'none' ? state.tokens[token] : null;
   if (tok) h['authorization'] = 'Bearer ' + tok;
@@ -172,9 +315,7 @@ async function call(opts){
     res = await fetch(tpl(path), { method, headers:h, body: body!==undefined ? JSON.stringify(body) : undefined });
     const text = await res.text();
     try { json = text ? JSON.parse(text) : null; } catch { json = text; }
-  } catch (e) {
-    json = { error: String(e) }; res = { status: 0 };
-  }
+  } catch (e) { json = { error: String(e) }; res = { status: 0 }; }
   const ms = Math.round(performance.now()-started);
   logEntries.unshift({ method, path: tpl(path), status: res.status, ms, req: body ?? null, res: json });
   if (logEntries.length > 200) logEntries.pop();
@@ -184,25 +325,23 @@ async function call(opts){
 
 // ---------------------------------------------------------------- scenarios
 const SCENARIOS = [
-  { key:'bootstrapEstate', name:'1 · Bootstrap estate',
-    desc:'Property, 2 units, wifi facts, smart lock, Airbnb + Booking.com channels, a vendor.',
+  { key:'bootstrapEstate', name:'Bootstrap estate',
+    desc:'Property, 2 units, wifi fact, smart lock, Airbnb + Booking.com channels, a vendor.',
     run: async (step) => {
       const p = await step('create property', { method:'POST', path:'/properties', body:{ name:'Santorini Cliff House', timezone:'Europe/Athens' }, expect:201, save:(b)=>({ propertyId:b.id }) });
-      await step('create unit A', { method:'POST', path:'/properties/'+p.id+'/units', body:{ name:'Caldera Suite', capacity:2 }, expect:201, save:(b)=>({ unitId:b.id }) });
-      await step('create unit B', { method:'POST', path:'/properties/'+p.id+'/units', body:{ name:'Sunset Villa', capacity:4 }, expect:201, save:(b)=>({ unitId2:b.id }) });
+      await step('create unit A (Caldera Suite)', { method:'POST', path:'/properties/'+p.id+'/units', body:{ name:'Caldera Suite', capacity:2 }, expect:201, save:(b)=>({ unitId:b.id }) });
+      await step('create unit B (Sunset Villa)', { method:'POST', path:'/properties/'+p.id+'/units', body:{ name:'Sunset Villa', capacity:4 }, expect:201, save:(b)=>({ unitId2:b.id }) });
       await step('add wifi fact', { method:'POST', path:'/units/{{unitId}}/facts', body:{ category:'wifi', key:'password', value:'sunset2024' }, expect:201 });
       await step('register smart lock', { method:'POST', path:'/access/locks', body:{ unitId: state.ids.unitId }, expect:201, save:(b)=>({ lockId:b.id }) });
-      await step('create Airbnb channel', { method:'POST', path:'/channels', body:{ type:'airbnb', name:'Airbnb (dummy)' }, expect:201, save:(b)=>({ channelAirbnbId:b.id, channelAirbnbSecret:b.webhookSecret }) });
-      await step('create Booking.com channel', { method:'POST', path:'/channels', body:{ type:'booking', name:'Booking.com (dummy)' }, expect:201, save:(b)=>({ channelBookingId:b.id, channelBookingSecret:b.webhookSecret }) });
-      await step('create vendor', { method:'POST', path:'/vendors', body:{ name:'Yiannis Plumbing', trade:'plumber' }, expect:201, save:(b)=>({ vendorId:b.id }) });
+      await step('connect Airbnb channel', { method:'POST', path:'/channels', body:{ type:'airbnb', name:'Airbnb (dummy)' }, expect:201, save:(b)=>({ channelAirbnbId:b.id, channelAirbnbSecret:b.webhookSecret }) });
+      await step('connect Booking.com channel', { method:'POST', path:'/channels', body:{ type:'booking', name:'Booking.com (dummy)' }, expect:201, save:(b)=>({ channelBookingId:b.id, channelBookingSecret:b.webhookSecret }) });
+      await step('add vendor (plumber)', { method:'POST', path:'/vendors', body:{ name:'Yiannis Plumbing', trade:'plumber' }, expect:201, save:(b)=>({ vendorId:b.id }) });
     }},
 
-  { key:'airbnbBooking', name:'2 · Airbnb booking arrives',
+  { key:'airbnbBooking', name:'Airbnb booking arrives', needs:['channelAirbnbId'],
     desc:'Dummy Airbnb posts a booking webhook → guest + booking + availability block.',
-    needs:['channelAirbnbId'],
     run: async (step) => {
-      const ref = 'HM' + uniq().toUpperCase();
-      state.ids.externalRef = ref;
+      const ref = 'HM' + uniq().toUpperCase(); state.ids.externalRef = ref;
       await step('webhook: booking.created', { method:'POST', path:'/webhooks/channels/{{orgId}}/{{channelAirbnbId}}',
         headers:{ 'x-channel-secret':'{{channelAirbnbSecret}}' }, token:'none',
         body:{ eventId:'evt_'+uniq(), type:'booking.created', externalRef:ref, unitId: state.ids.unitId,
@@ -210,217 +349,235 @@ const SCENARIOS = [
           guest:{ name:'Marco Rossi', email:'marco_'+uniq()+'@guest.test', language:'it' } },
         expect:200, check:(b)=> b.status==='processed', save:(b)=>({ bookingId:b.bookingId }) });
       await step('read back booking + guest', { method:'GET', path:'/bookings', expect:200,
-        check:(b)=> Array.isArray(b) && b.length>0,
-        save:(b)=>({ guestId: b.find(x=>x.id===state.ids.bookingId)?.guestId }) });
+        check:(b)=> Array.isArray(b) && b.length>0, save:(b)=>({ guestId: b.find(x=>x.id===state.ids.bookingId)?.guestId }) });
     }},
 
-  { key:'conflict', name:'3 · Conflicting Booking.com booking',
-    desc:'Overlapping dates from another channel → recorded as conflict, never double-booked.',
-    needs:['channelBookingId','bookingId'],
+  { key:'conflict', name:'Conflicting Booking.com booking', needs:['channelBookingId','bookingId'],
+    desc:'Overlapping dates from another channel → recorded as a conflict, never double-booked.',
     run: async (step) => {
-      await step('webhook: overlapping booking.created', { method:'POST', path:'/webhooks/channels/{{orgId}}/{{channelBookingId}}',
+      await step('webhook: overlapping booking', { method:'POST', path:'/webhooks/channels/{{orgId}}/{{channelBookingId}}',
         headers:{ 'x-channel-secret':'{{channelBookingSecret}}' }, token:'none',
         body:{ eventId:'evt_'+uniq(), type:'booking.created', externalRef:'BDC'+uniq().toUpperCase(),
           unitId: state.ids.unitId, checkIn: daysFromNow(22), checkOut: daysFromNow(24),
           guest:{ name:'Sophie Dubois', email:'sophie_'+uniq()+'@guest.test' } },
         expect:200, check:(b)=> b.status==='conflict' });
-      await step('conflict is in the audit trail', { method:'GET', path:'/audit?action=booking.conflict_detected', expect:200,
-        check:(b)=> b.length >= 1 });
+      await step('conflict recorded in audit trail', { method:'GET', path:'/audit?action=booking.conflict_detected', expect:200, check:(b)=> b.length >= 1 });
     }},
 
-  { key:'turnover', name:'4 · Cleaner turnover',
-    desc:'Invite a cleaner → accept → staff profile → task → assign → accept → complete → unit ready.',
-    needs:['unitId'],
+  { key:'turnover', name:'Cleaner turnover', needs:['unitId'],
+    desc:'Invite a cleaner → accept → task → assign → accept → complete → unit ready.',
     run: async (step) => {
       const email = 'cleaner_'+uniq()+'@console.test';
       const inv = await step('invite cleaner', { method:'POST', path:'/auth/invitations', body:{ email, role:'cleaner' }, expect:201 });
-      const acc = await step('cleaner accepts invite', { method:'POST', path:'/auth/invitations/accept', token:'none',
-        body:{ token: inv.token, password:'CleanerPass1!', name:'Nikos' }, expect:200 });
-      state.tokens.cleaner = acc.accessToken; state.ids.cleanerUserId = acc.user.id; persist();
+      const acc = await step('cleaner accepts invite', { method:'POST', path:'/auth/invitations/accept', token:'none', body:{ token: inv.token, password:'CleanerPass1!', name:'Nikos' }, expect:200 });
+      state.tokens.cleaner = acc.accessToken; persist();
       await step('create staff profile', { method:'POST', path:'/staff', body:{ name:'Nikos', role:'cleaner', userId: acc.user.id }, expect:201, save:(b)=>({ staffId:b.id }) });
       await step('mark unit dirty', { method:'PATCH', path:'/units/{{unitId}}', body:{ status:'dirty' }, expect:200 });
       await step('create cleaning task', { method:'POST', path:'/tasks', body:{ unitId: state.ids.unitId, type:'cleaning', dueAt: daysFromNow(1) }, expect:201, save:(b)=>({ taskId:b.id }) });
       await step('assign to Nikos', { method:'POST', path:'/tasks/{{taskId}}/assign', body:{ staffId: state.ids.staffId }, expect:201 });
       await step('cleaner accepts', { method:'POST', path:'/tasks/{{taskId}}/accept', token:'cleaner', expect:201, check:(b)=> b.status==='accepted' });
-      await step('cleaner completes (with photo)', { method:'POST', path:'/tasks/{{taskId}}/complete', token:'cleaner',
-        body:{ photos:['https://example.test/after.jpg'] }, expect:201, check:(b)=> b.status==='completed' });
-      await step('unit is ready again', { method:'GET', path:'/units', expect:200,
-        check:(b)=> b.find(u=>u.id===state.ids.unitId)?.status==='ready' });
+      await step('cleaner completes (photo)', { method:'POST', path:'/tasks/{{taskId}}/complete', token:'cleaner', body:{ photos:['https://example.test/after.jpg'] }, expect:201, check:(b)=> b.status==='completed' });
+      await step('unit is ready again', { method:'GET', path:'/units', expect:200, check:(b)=> b.find(u=>u.id===state.ids.unitId)?.status==='ready' });
     }},
 
-  { key:'doorCode', name:'5 · Door code lifecycle',
-    desc:'Issue a time-boxed code for the booking (shown once), inspect events, revoke.',
-    needs:['bookingId'],
+  { key:'doorCode', name:'Door code lifecycle', needs:['bookingId'],
+    desc:'Issue a time-boxed code (shown once), inspect the event trail, revoke.',
     run: async (step) => {
-      const r = await step('issue credential for booking', { method:'POST', path:'/access/credentials',
-        body:{ bookingId: state.ids.bookingId }, expect:201, save:(b)=>({ credentialId:b.credential.id }) });
-      await step('door code: ' + r.code + ' (shown once!)', { method:'GET', path:'/access/credentials?bookingId={{bookingId}}', expect:200 });
+      const r = await step('issue credential for booking', { method:'POST', path:'/access/credentials', body:{ bookingId: state.ids.bookingId }, expect:201, save:(b)=>({ credentialId:b.credential.id }) });
+      await step('door code issued → ' + r.code + ' (shown once)', { method:'GET', path:'/access/credentials?bookingId={{bookingId}}', expect:200 });
       await step('revoke credential', { method:'POST', path:'/access/credentials/{{credentialId}}/revoke', expect:201, check:(b)=> b.status==='revoked' });
-      await step('event trail (issued + revoked)', { method:'GET', path:'/access/credentials/{{credentialId}}/events', expect:200,
-        check:(b)=> b.some(e=>e.event==='issued') && b.some(e=>e.event==='revoked') });
+      await step('event trail: issued + revoked', { method:'GET', path:'/access/credentials/{{credentialId}}/events', expect:200, check:(b)=> b.some(e=>e.event==='issued') && b.some(e=>e.event==='revoked') });
     }},
 
-  { key:'concierge', name:'6 · Guest asks the concierge',
-    desc:'Magic link → guest session → message. Live AI reply if the Python service runs; human handoff otherwise.',
-    needs:['guestId','unitId'],
-    run: async (step) => {
-      const ml = await step('issue guest magic link', { method:'POST', path:'/auth/magic-links',
-        body:{ subjectType:'guest', subjectId: state.ids.guestId }, expect:201 });
-      const v = await step('guest verifies link', { method:'POST', path:'/auth/magic-links/verify', token:'none',
-        body:{ token: ml.token }, expect:200 });
+  { key:'kb', name:'Stock the knowledge base', ai:true, needs:['unitId'],
+    desc:'Add a house manual + facts, embed them (RAG), and verify the unit’s searchable index.',
+    run: async (step, note) => {
+      await step('add house manual (document)', { method:'POST', path:'/kb/documents',
+        body:{ unitId: state.ids.unitId, title:'House Manual', content:'The boiler switch is in the hallway closet, left of the door. Hot water takes about ten minutes. The air-conditioning remote is in the bedside drawer. Quiet hours are 23:00 to 08:00. Nearest taverna: Nikos, a five minute walk downhill.' }, expect:201 });
+      await step('add parking fact', { method:'POST', path:'/units/{{unitId}}/facts', body:{ category:'parking', key:'info', value:'Free lot 80m uphill, spot 4.' }, expect:201 });
+      await step('add check-in fact', { method:'POST', path:'/units/{{unitId}}/facts', body:{ category:'checkin', key:'time', value:'from 15:00' }, expect:201 });
+      await step('embed + index (reindex)', { method:'POST', path:'/kb/units/{{unitId}}/reindex', expect:201 });
+      const s = await step('read index size', { method:'GET', path:'/kb/units/{{unitId}}/chunks', expect:200 });
+      if (s.chunks > 0) note('ok', 'indexed ' + s.chunks + ' searchable chunks ✓');
+      else note('warn', '0 chunks — is the AI service running? (pnpm run dev:ai)');
+    }},
+
+  { key:'concierge', name:'Guest asks the concierge', ai:true, needs:['guestId','unitId'],
+    desc:'Magic-link the guest, open a conversation, ask a question — shows the live RAG answer or a human handoff.',
+    run: async (step, note) => {
+      const ml = await step('issue guest magic link', { method:'POST', path:'/auth/magic-links', body:{ subjectType:'guest', subjectId: state.ids.guestId }, expect:201 });
+      const v = await step('guest verifies link', { method:'POST', path:'/auth/magic-links/verify', token:'none', body:{ token: ml.token }, expect:200 });
       state.tokens.guest = v.accessToken; persist();
-      await step('open conversation', { method:'POST', path:'/conversations',
-        body:{ unitId: state.ids.unitId, guestId: state.ids.guestId, bookingId: state.ids.bookingId }, expect:201, save:(b)=>({ conversationId:b.id }) });
-      const msg = await step('guest: “What is the wifi password?”', { method:'POST', path:'/conversations/{{conversationId}}/messages',
-        token:'guest', body:{ body:'What is the wifi password?' }, expect:201 });
-      await step(msg.ai && msg.ai.escalated ? 'AI unavailable → escalated to host ✔' : 'AI replied: ' + (msg.ai && msg.ai.reply ? msg.ai.reply.slice(0,80) : '—'),
-        { method:'GET', path:'/conversations/{{conversationId}}/messages', expect:200 });
+      await step('open conversation', { method:'POST', path:'/conversations', body:{ unitId: state.ids.unitId, guestId: state.ids.guestId, bookingId: state.ids.bookingId }, expect:201, save:(b)=>({ conversationId:b.id }) });
+      const q = 'Hi! What is the wifi password, and where can I park?';
+      const msg = await step('guest asks a question', { method:'POST', path:'/conversations/{{conversationId}}/messages', token:'guest', body:{ body:q }, expect:201 });
+      const ai = msg.ai || {};
+      pushChat('guest', q); pushChat('ai', ai.reply, ai.escalated);
+      if (ai.escalated) note('warn', 'AI handed off to a human (offline or unsure)');
+      else note('ok', 'AI answered from the knowledge base ✓');
     }},
 
-  { key:'maintenance', name:'7 · Maintenance + vendor payout',
-    desc:'Ticket → vendor assigned with door access → resolved → vendor paid in-app.',
-    needs:['vendorId','unitId'],
+  { key:'maintenance', name:'Maintenance + vendor payout', needs:['vendorId','unitId'],
+    desc:'Ticket → vendor assigned with a door code → resolved → vendor paid in-app.',
     run: async (step) => {
-      await step('open ticket', { method:'POST', path:'/maintenance/tickets',
-        body:{ unitId: state.ids.unitId, title:'AC not cooling', priority:4 }, expect:201, save:(b)=>({ ticketId:b.id }) });
-      await step('assign vendor + grant access', { method:'POST', path:'/maintenance/tickets/{{ticketId}}/assign',
-        body:{ vendorId: state.ids.vendorId, scheduledAt: daysFromNow(2), grantAccess:true }, expect:201,
-        check:(b)=> Boolean(b.accessCredentialId) });
-      await step('resolve with cost', { method:'POST', path:'/maintenance/tickets/{{ticketId}}/resolve',
-        body:{ cost:120.5 }, expect:201, check:(b)=> b.status==='resolved' });
-      await step('pay the vendor €120.50', { method:'POST', path:'/billing/payouts',
-        body:{ payeeType:'vendor', payeeId: state.ids.vendorId, amount:120.5, ticketId: state.ids.ticketId, note:'AC repair' },
-        expect:201, check:(b)=> b.status==='paid' });
+      await step('open ticket', { method:'POST', path:'/maintenance/tickets', body:{ unitId: state.ids.unitId, title:'AC not cooling', priority:4 }, expect:201, save:(b)=>({ ticketId:b.id }) });
+      await step('assign vendor + grant access', { method:'POST', path:'/maintenance/tickets/{{ticketId}}/assign', body:{ vendorId: state.ids.vendorId, scheduledAt: daysFromNow(2), grantAccess:true }, expect:201, check:(b)=> Boolean(b.accessCredentialId) });
+      await step('resolve (cost €120.50)', { method:'POST', path:'/maintenance/tickets/{{ticketId}}/resolve', body:{ cost:120.5 }, expect:201, check:(b)=> b.status==='resolved' });
+      await step('pay the vendor €120.50', { method:'POST', path:'/billing/payouts', body:{ payeeType:'vendor', payeeId: state.ids.vendorId, amount:120.5, ticketId: state.ids.ticketId, note:'AC repair' }, expect:201, check:(b)=> b.status==='paid' });
     }},
 
-  { key:'pricing', name:'8 · Pricing suggestion',
+  { key:'pricing', name:'Pricing suggestion', needs:['unitId'],
     desc:'Last-minute low-occupancy rule → explainable suggestion for tomorrow → accept.',
-    needs:['unitId'],
-    run: async (step) => {
-      await step('create rule (−15% last-minute)', { method:'POST', path:'/pricing/rules',
-        body:{ unitId: state.ids.unitId, name:'Last-minute low-occupancy', conditions:{ leadTimeDays:{ lt:3 }, occupancy:{ lt:0.5 } }, effect:{ adjustPct:-15 }, priority:10 }, expect:201 });
-      const s = await step('evaluate tomorrow @ base 100', { method:'POST', path:'/pricing/suggestions/evaluate',
-        body:{ unitId: state.ids.unitId, day: daysFromNow(1).slice(0,10), basePrice:100 }, expect:201, save:(b)=>({ suggestionId:b.id }) });
-      await step('suggested: ' + s.suggestedPrice + ' (rationale: ' + (s.rationale||[]).length + ' rule(s))',
-        { method:'POST', path:'/pricing/suggestions/{{suggestionId}}/accept', expect:201, check:(b)=> b.status==='accepted' });
+    run: async (step, note) => {
+      await step('create rule (−15% last-minute)', { method:'POST', path:'/pricing/rules', body:{ unitId: state.ids.unitId, name:'Last-minute low-occupancy', conditions:{ leadTimeDays:{ lt:3 }, occupancy:{ lt:0.5 } }, effect:{ adjustPct:-15 }, priority:10 }, expect:201 });
+      const s = await step('evaluate tomorrow @ base €100', { method:'POST', path:'/pricing/suggestions/evaluate', body:{ unitId: state.ids.unitId, day: daysFromNow(1).slice(0,10), basePrice:100 }, expect:201, save:(b)=>({ suggestionId:b.id }) });
+      note('ok', 'suggested €' + s.suggestedPrice + ' · ' + (s.rationale||[]).length + ' rule(s) fired');
+      await step('accept suggestion', { method:'POST', path:'/pricing/suggestions/{{suggestionId}}/accept', expect:201, check:(b)=> b.status==='accepted' });
     }},
 
-  { key:'billing', name:'9 · Subscription + pay the cleaner',
+  { key:'billing', name:'Subscription + pay the cleaner', needs:['staffId','taskId'],
     desc:'Activate the Pro plan (per-unit metered), then pay Nikos for the turnover.',
-    needs:['staffId','taskId'],
     run: async (step) => {
-      await step('checkout Pro plan', { method:'POST', path:'/billing/subscription/checkout',
-        body:{ plan:'pro' }, expect:201, check:(b)=> b.status==='active' });
-      await step('pay cleaner €45.50', { method:'POST', path:'/billing/payouts',
-        body:{ payeeType:'staff', payeeId: state.ids.staffId, amount:45.5, taskId: state.ids.taskId, note:'Turnover — Caldera Suite' },
-        expect:201, check:(b)=> b.status==='paid' && b.providerRef });
-      await step('payout history', { method:'GET', path:'/billing/payouts', expect:200, check:(b)=> b.length>=1 });
+      await step('checkout Pro plan', { method:'POST', path:'/billing/subscription/checkout', body:{ plan:'pro' }, expect:201, check:(b)=> b.status==='active' });
+      await step('pay cleaner €45.50', { method:'POST', path:'/billing/payouts', body:{ payeeType:'staff', payeeId: state.ids.staffId, amount:45.5, taskId: state.ids.taskId, note:'Turnover — Caldera Suite' }, expect:201, check:(b)=> b.status==='paid' && b.providerRef });
+      await step('read payout history', { method:'GET', path:'/billing/payouts', expect:200, check:(b)=> b.length>=1 });
     }},
 ];
 
 function renderScenarios(){
   const host = $('#scenarios'); host.innerHTML = '';
-  for (const sc of SCENARIOS) {
-    const el = document.createElement('div'); el.className = 'scenario';
-    el.innerHTML = '<div class="top"><span class="name">'+sc.name+'</span>'
-      + '<span class="desc">'+sc.desc+'</span>'
-      + '<button class="small" data-k="'+sc.key+'">Run</button></div><ul class="steps"></ul>';
+  SCENARIOS.forEach((sc, i) => {
+    const el = document.createElement('div'); el.className = 'scn' + (sc.ai ? ' ai' : ''); el.dataset.key = sc.key;
+    el.innerHTML =
+      '<div class="scn-h">'
+      + '<span class="num">'+(i+1)+'</span>'
+      + '<div class="scn-meta"><div class="t">'+sc.name+(sc.ai?' <span class="role-tag" style="color:var(--purple);border-color:#33306a">AI</span>':'')+'</div><div class="d">'+sc.desc+'</div></div>'
+      + '<span class="status"><span class="status-dot"></span></span>'
+      + '<button class="scn-run xs">Run</button>'
+      + '</div><ul class="steps"></ul>';
+    const head = el.querySelector('.scn-h');
+    const steps = el.querySelector('.steps');
+    head.onclick = (e) => { if (e.target.classList.contains('scn-run')) return; steps.classList.toggle('open'); };
+    el.querySelector('.scn-run').onclick = (e) => { e.stopPropagation(); runScenario(sc, el); };
     host.appendChild(el);
-    el.querySelector('button').onclick = () => runScenario(sc, el);
-  }
+  });
 }
 
+function setScnStatus(el, kind){ el.querySelector('.status-dot').className = 'status-dot ' + kind; }
+
 async function runScenario(sc, el){
-  const list = el.querySelector('.steps'); list.style.display = 'block'; list.innerHTML = '';
-  if (!state.tokens.owner) { addStep(list,'err','no session — bootstrap or log in first'); return false; }
+  const list = el.querySelector('.steps'); list.classList.add('open'); list.innerHTML = '';
+  setScnStatus(el, 'run');
+  if (!state.tokens.owner) { addStep(list,'err','no session — bootstrap or log in first'); setScnStatus(el,'err'); return false; }
   for (const need of sc.needs || []) {
-    if (!state.ids[need]) { addStep(list,'err','missing context "'+need+'" — run earlier scenarios first'); return false; }
+    if (!state.ids[need]) { addStep(list,'err','missing context "'+need+'" — run earlier workloads first'); setScnStatus(el,'err'); return false; }
   }
   const step = async (name, req) => {
     const li = addStep(list,'run',name);
     const r = await call(req);
     const okStatus = req.expect ? r.status === req.expect : r.status < 400;
     const okCheck = req.check ? !!req.check(r.body) : true;
-    if (!okStatus || !okCheck) {
-      setStep(li,'err', name+' — HTTP '+r.status+(okCheck?'':' (check failed)'));
-      throw new Error('step failed: '+name);
-    }
+    if (!okStatus || !okCheck) { setStep(li,'err', name+' — HTTP '+r.status+(okCheck?'':' · check failed')); throw new Error('step failed: '+name); }
     if (req.save) { Object.assign(state.ids, req.save(r.body) || {}); persist(); }
     setStep(li,'ok', name);
     return r.body;
   };
-  try { await sc.run(step); addStep(list,'ok','— scenario complete —'); return true; }
-  catch (e) { addStep(list,'err', String(e.message||e)); return false; }
+  const note = (kind,msg) => addStep(list, kind, msg);
+  try { await sc.run(step, note); addStep(list,'ok','workload complete'); setScnStatus(el,'ok'); return true; }
+  catch (e) { addStep(list,'err', String(e.message||e)); setScnStatus(el,'err'); return false; }
 }
 
 function addStep(list, kind, msg){
   const li = document.createElement('li');
-  li.innerHTML = '<span class="badge b-'+kind+'">'+(kind==='ok'?'OK':kind==='err'?'ERR':'…')+'</span><span class="msg">'+msg+'</span>';
+  const label = kind==='ok'?'ok':kind==='err'?'err':kind==='warn'?'warn':'···';
+  li.innerHTML = '<span class="badge b-'+(kind==='run'?'run':kind)+'">'+label+'</span><span class="msg">'+escapeHtml(msg)+'</span>';
   list.appendChild(li); return li;
 }
 function setStep(li, kind, msg){
-  li.innerHTML = '<span class="badge b-'+kind+'">'+(kind==='ok'?'OK':'ERR')+'</span><span class="msg">'+msg+'</span>';
+  li.innerHTML = '<span class="badge b-'+kind+'">'+(kind==='ok'?'ok':'err')+'</span><span class="msg">'+escapeHtml(msg)+'</span>';
 }
 
 $('#runAll').onclick = async () => {
-  for (const sc of SCENARIOS) {
-    const el = [...document.querySelectorAll('.scenario')][SCENARIOS.indexOf(sc)];
-    const ok = await runScenario(sc, el);
-    if (!ok) break;
+  const els = [...document.querySelectorAll('.scn')];
+  let done = 0;
+  for (let i=0;i<SCENARIOS.length;i++){
+    $('#prog').textContent = 'running ' + (i+1) + '/' + SCENARIOS.length + ' · ' + SCENARIOS[i].name;
+    const ok = await runScenario(SCENARIOS[i], els[i]);
+    if (ok) done++; else break;
   }
+  $('#prog').textContent = done + '/' + SCENARIOS.length + ' workloads passed';
 };
+$('#resetAll').onclick = () => { document.querySelectorAll('.scn').forEach(el=>{ setScnStatus(el,''); el.querySelector('.steps').innerHTML=''; }); $('#prog').textContent=''; };
+
+// ---------------------------------------------------------------- concierge chat
+const chatLog = [];
+function pushChat(who, text, escalated){
+  if (who === 'ai' && !text) chatLog.push({ who:'sys', text:'↳ handed off to a human host' });
+  else chatLog.push({ who, text });
+  if (who === 'ai' && escalated && text) chatLog.push({ who:'sys', text:'↳ also flagged to the host' });
+  renderChat();
+}
+function renderChat(){
+  const host = $('#chat');
+  if (!chatLog.length) { host.innerHTML = '<div class="chat-empty">Run “Guest asks the concierge”, or ask below.</div>'; return; }
+  host.innerHTML = chatLog.slice(-12).map(m => {
+    if (m.who==='sys') return '<div class="bubble sys">'+escapeHtml(m.text)+'</div>';
+    const label = m.who==='guest'?'Guest':'Concierge';
+    return '<div class="bubble '+m.who+'"><div class="who">'+label+'</div>'+escapeHtml(m.text||'…')+'</div>';
+  }).join('');
+  host.scrollTop = host.scrollHeight;
+}
+async function askConcierge(){
+  const q = $('#askInput').value.trim(); if (!q) return;
+  if (!state.ids.conversationId || !state.tokens.guest) {
+    $('#askHint').textContent = 'Run “Guest asks the concierge” first to open a guest conversation.'; return;
+  }
+  $('#askHint').textContent=''; $('#askInput').value='';
+  pushChat('guest', q);
+  const r = await call({ method:'POST', path:'/conversations/{{conversationId}}/messages', token:'guest', body:{ body:q } });
+  const ai = (r.body && r.body.ai) || {};
+  pushChat('ai', ai.reply, ai.escalated);
+}
+$('#askBtn').onclick = askConcierge;
+$('#askInput').addEventListener('keydown', e => { if (e.key==='Enter') askConcierge(); });
 
 // ---------------------------------------------------------------- auth
 function renderWho(){
   const s = state.session;
   $('#who').innerHTML = s
-    ? 'Signed in as <b>'+s.email+'</b> · org <b>'+s.orgSlug+'</b> · role <b>'+s.role+'</b>'
-    : 'Not authenticated.';
+    ? '<span class="avatar">'+(s.email[0]||'?').toUpperCase()+'</span><span>Signed in as <b>'+s.email+'</b><br><span class="hint">'+s.orgSlug+'</span></span><span style="margin-left:auto" class="role-tag">'+s.role+'</span>'
+    : '<span class="avatar">?</span><span class="hint">Not authenticated</span>';
   renderTokens();
 }
 function renderTokens(){
   const host = $('#tokens'); host.innerHTML = '';
   for (const k of ['owner','cleaner','guest']) {
     const v = state.tokens[k];
-    const div = document.createElement('div');
-    div.innerHTML = '<span class="k">'+k+'</span><span class="v">'+(v ? v.slice(0,18)+'…' : '—')+'</span>';
+    const div = document.createElement('div'); div.className='r';
+    div.innerHTML = '<span class="k">'+k+'</span><span class="v" style="color:'+(v?'var(--ok)':'var(--faint)')+'">'+(v ? 'active · '+v.slice(0,10)+'…' : 'none')+'</span>';
     host.appendChild(div);
   }
 }
-
 $('#bootstrapBtn').onclick = async () => {
-  const id = uniq();
-  const email = 'owner_'+id+'@console.test', password = 'ConsolePass1!';
-  const r = await call({ method:'POST', path:'/auth/register', token:'none',
-    body:{ email, password, orgName:'Console Org '+id } });
+  const id = uniq(); const email = 'owner_'+id+'@console.test', password = 'ConsolePass1!';
+  const r = await call({ method:'POST', path:'/auth/register', token:'none', body:{ email, password, orgName:'Console Org '+id } });
   if (r.status !== 201) return alert('register failed: '+JSON.stringify(r.body));
-  state.tokens.owner = r.body.accessToken;
-  state.refreshToken = r.body.refreshToken;
-  state.ids.orgId = r.body.org.id;
+  state.tokens.owner = r.body.accessToken; state.refreshToken = r.body.refreshToken; state.ids.orgId = r.body.org.id;
   state.session = { email, orgSlug: r.body.org.slug, role: r.body.role };
-  $('#email').value = email; $('#password').value = password;
-  persist(); renderWho();
+  $('#email').value = email; $('#password').value = password; persist(); renderWho();
 };
-
 $('#loginBtn').onclick = async () => {
-  const r = await call({ method:'POST', path:'/auth/login', token:'none',
-    body:{ email: $('#email').value, password: $('#password').value } });
+  const r = await call({ method:'POST', path:'/auth/login', token:'none', body:{ email: $('#email').value, password: $('#password').value } });
   if (r.status !== 200) return alert('login failed: '+JSON.stringify(r.body));
-  state.tokens.owner = r.body.accessToken;
-  state.refreshToken = r.body.refreshToken;
-  state.ids.orgId = r.body.org.id;
-  state.session = { email: r.body.user.email, orgSlug: r.body.org.slug, role: r.body.role };
-  persist(); renderWho();
+  state.tokens.owner = r.body.accessToken; state.refreshToken = r.body.refreshToken; state.ids.orgId = r.body.org.id;
+  state.session = { email: r.body.user.email, orgSlug: r.body.org.slug, role: r.body.role }; persist(); renderWho();
 };
-
 $('#refreshBtn').onclick = async () => {
   if (!state.refreshToken) return alert('no refresh token');
   const r = await call({ method:'POST', path:'/auth/refresh', token:'none', body:{ refreshToken: state.refreshToken } });
   if (r.status !== 200) return alert('refresh failed');
-  state.tokens.owner = r.body.accessToken; state.refreshToken = r.body.refreshToken;
-  persist(); renderWho();
+  state.tokens.owner = r.body.accessToken; state.refreshToken = r.body.refreshToken; persist(); renderWho();
 };
-
 $('#logoutBtn').onclick = async () => {
   if (state.refreshToken) await call({ method:'POST', path:'/auth/logout', token:'none', body:{ refreshToken: state.refreshToken } });
   state.tokens = {}; state.refreshToken = null; state.session = null; persist(); renderWho();
@@ -430,15 +587,39 @@ $('#logoutBtn').onclick = async () => {
 function renderCtx(){
   const host = $('#ctx'); host.innerHTML = '';
   const keys = Object.keys(state.ids);
-  if (!keys.length) { host.innerHTML = '<div class="hint">empty — run a scenario</div>'; return; }
+  if (!keys.length) { host.innerHTML = '<div class="hint">empty — run a workload</div>'; return; }
   for (const k of keys) {
-    const div = document.createElement('div');
+    const div = document.createElement('div'); div.className='r';
     div.innerHTML = '<span class="k">'+k+'</span><span class="v" title="click to copy">'+state.ids[k]+'</span>';
     div.querySelector('.v').onclick = () => navigator.clipboard.writeText(String(state.ids[k]));
     host.appendChild(div);
   }
 }
 $('#clearCtx').onclick = () => { state.ids = {}; persist(); };
+
+// ---------------------------------------------------------------- services / health
+async function pollStatus(){
+  try {
+    const r = await fetch('/console/status'); const s = await r.json();
+    $('#envBadge').textContent = s.env;
+    const p = s.providers;
+    $('#health').innerHTML =
+      '<span class="pill"><span class="dot on"></span> API</span>'
+      + '<span class="pill"><span class="dot '+(s.ai?'on':'off')+'"></span> AI service</span>'
+      + '<span class="pill">chat: '+p.chat+' '+(p.openaiKey||p.anthropicKey?'·key✓':'·no key')+'</span>'
+      + '<span class="pill">embed: '+p.embeddings+' '+(p.voyageKey?'·key✓':'·no key')+'</span>';
+    $('#services').innerHTML =
+      svc('API', '<span class="val">online</span>', true)
+      + svc('AI service', '<span class="val '+(s.ai?'':'mut')+'">'+(s.ai?'online':'offline — pnpm run dev:ai')+'</span>', s.ai)
+      + svc('Chat', '<span class="val">'+p.chat+'</span> <span class="val mut">'+((p.chat==='openai'&&p.openaiKey)||(p.chat==='anthropic'&&p.anthropicKey)?'key set':'no key')+'</span>', (p.chat==='openai'&&p.openaiKey)||(p.chat==='anthropic'&&p.anthropicKey))
+      + svc('Embeddings', '<span class="val">'+p.embeddings+'</span> <span class="val mut">'+(p.voyageKey||(p.embeddings==='openai'&&p.openaiKey)?'key set':'stub')+'</span>', p.voyageKey||(p.embeddings==='openai'&&p.openaiKey));
+  } catch (e) {
+    $('#health').innerHTML = '<span class="pill"><span class="dot off"></span> API unreachable</span>';
+  }
+}
+function svc(name, val, ok){
+  return '<div class="svc"><span class="dot '+(ok?'on':'off')+'"></span><span class="name">'+name+'</span>'+val+'</div>';
+}
 
 // ---------------------------------------------------------------- catalog
 const CATALOG = [
@@ -460,21 +641,6 @@ const CATALOG = [
     ['POST','/units/{{unitId}}/facts',{ category:'wifi', key:'ssid', value:'Villa-5G' }],
     ['GET','/units/{{unitId}}/facts'],
   ]},
-  { g:'bookings & channels', eps:[
-    ['GET','/bookings'],
-    ['POST','/bookings/confirm',{ unitId:'{{unitId}}', checkIn:'2026-08-01T12:00:00Z', checkOut:'2026-08-05T12:00:00Z' }],
-    ['POST','/channels',{ type:'airbnb', name:'Airbnb' }], ['GET','/channels'],
-    ['POST','/webhooks/channels/{{orgId}}/{{channelAirbnbId}}',
-      { eventId:'evt_1', type:'booking.created', externalRef:'HMX', unitId:'{{unitId}}',
-        checkIn:'2026-08-10T12:00:00Z', checkOut:'2026-08-12T12:00:00Z',
-        guest:{ name:'G', email:'g@x.test' } },
-      'none', { 'x-channel-secret':'{{channelAirbnbSecret}}' }],
-  ]},
-  { g:'calendar', eps:[
-    ['GET','/calendar/units/{{unitId}}/blocks'],
-    ['POST','/calendar/blocks',{ unitId:'{{unitId}}', checkIn:'2026-09-01T12:00:00Z', checkOut:'2026-09-03T12:00:00Z' }],
-    ['GET','/calendar/units/{{unitId}}/availability?checkIn=2026-09-01T12:00:00Z&checkOut=2026-09-03T12:00:00Z'],
-  ]},
   { g:'knowledge base (RAG)', eps:[
     ['POST','/kb/documents',{ unitId:'{{unitId}}', title:'House Manual', content:'The boiler switch is in the hallway closet. Quiet hours 23:00–08:00.' }],
     ['GET','/kb/documents?unitId={{unitId}}'],
@@ -487,6 +653,19 @@ const CATALOG = [
     ['GET','/conversations'], ['GET','/conversations/{{conversationId}}/messages'],
     ['POST','/conversations/{{conversationId}}/messages',{ body:'Hello!' }],
     ['POST','/concierge/conversations/{{conversationId}}/respond'],
+  ]},
+  { g:'bookings & channels', eps:[
+    ['GET','/bookings'],
+    ['POST','/bookings/confirm',{ unitId:'{{unitId}}', checkIn:'2026-08-01T12:00:00Z', checkOut:'2026-08-05T12:00:00Z' }],
+    ['POST','/channels',{ type:'airbnb', name:'Airbnb' }], ['GET','/channels'],
+    ['POST','/webhooks/channels/{{orgId}}/{{channelAirbnbId}}',
+      { eventId:'evt_1', type:'booking.created', externalRef:'HMX', unitId:'{{unitId}}', checkIn:'2026-08-10T12:00:00Z', checkOut:'2026-08-12T12:00:00Z', guest:{ name:'G', email:'g@x.test' } },
+      'none', { 'x-channel-secret':'{{channelAirbnbSecret}}' }],
+  ]},
+  { g:'calendar', eps:[
+    ['GET','/calendar/units/{{unitId}}/blocks'],
+    ['POST','/calendar/blocks',{ unitId:'{{unitId}}', checkIn:'2026-09-01T12:00:00Z', checkOut:'2026-09-03T12:00:00Z' }],
+    ['GET','/calendar/units/{{unitId}}/availability?checkIn=2026-09-01T12:00:00Z&checkOut=2026-09-03T12:00:00Z'],
   ]},
   { g:'access', eps:[
     ['POST','/access/locks',{ unitId:'{{unitId}}' }], ['GET','/access/locks'],
@@ -520,8 +699,7 @@ const CATALOG = [
   ]},
   { g:'workflows & audit', eps:[
     ['POST','/workflows',{ name:'WF', triggerEvent:'booking.confirmed', definition:{ steps:[{ key:'clean', action:'tasks.createCleaning' }] } }],
-    ['GET','/workflows'], ['GET','/workflows/runs'],
-    ['GET','/audit?limit=50'],
+    ['GET','/workflows'], ['GET','/workflows/runs'], ['GET','/audit?limit=50'],
   ]},
   { g:'billing', eps:[
     ['GET','/billing/subscription'],
@@ -531,15 +709,16 @@ const CATALOG = [
     ['POST','/webhooks/billing',{ type:'invoice.paid', orgId:'{{orgId}}' },'none',{ 'x-billing-signature':'dev-billing-secret' }],
   ]},
 ];
-
 function renderCatalog(){
   const host = $('#catalog'); host.innerHTML = '';
+  let count = 0;
   for (const grp of CATALOG) {
-    const el = document.createElement('div'); el.className = 'catalog-group';
-    el.innerHTML = '<div class="g">▸ '+grp.g+'</div><div class="eps"></div>';
+    const el = document.createElement('div'); el.className = 'cat-g';
+    el.innerHTML = '<div class="g"><span class="chev">▶</span> '+grp.g+'</div><div class="eps"></div>';
     const eps = el.querySelector('.eps');
-    el.querySelector('.g').onclick = () => { eps.style.display = eps.style.display==='block' ? 'none' : 'block'; };
+    el.querySelector('.g').onclick = () => el.classList.toggle('open');
     for (const [method, path, body, token, headers] of grp.eps) {
+      count++;
       const row = document.createElement('div'); row.className = 'ep';
       row.innerHTML = '<span class="m m-'+method+'">'+method+'</span><span>'+path+'</span>';
       row.onclick = () => {
@@ -547,46 +726,41 @@ function renderCatalog(){
         $('#rbBody').value = body ? JSON.stringify(body, null, 2) : '';
         $('#rbToken').value = token || 'owner';
         $('#rbHeaders').value = headers ? JSON.stringify(headers, null, 2) : '';
+        window.scrollTo({ top:0, behavior:'smooth' });
       };
       eps.appendChild(row);
     }
     host.appendChild(el);
   }
+  $('#catCount').textContent = count + ' endpoints';
 }
 
-// ---------------------------------------------------------------- builder
+// ---------------------------------------------------------------- builder + log
 $('#rbSend').onclick = async () => {
   let body, headers;
-  try { body = $('#rbBody').value.trim() ? JSON.parse(tpl($('#rbBody').value)) : undefined; }
-  catch (e) { return alert('body is not valid JSON'); }
-  try { headers = $('#rbHeaders').value.trim() ? JSON.parse(tpl($('#rbHeaders').value)) : {}; }
-  catch (e) { return alert('headers is not valid JSON'); }
+  try { body = $('#rbBody').value.trim() ? JSON.parse(tpl($('#rbBody').value)) : undefined; } catch { return alert('body is not valid JSON'); }
+  try { headers = $('#rbHeaders').value.trim() ? JSON.parse(tpl($('#rbHeaders').value)) : {}; } catch { return alert('headers is not valid JSON'); }
   const r = await call({ method:$('#rbMethod').value, path:$('#rbPath').value, body, headers, token:$('#rbToken').value });
-  $('#response').innerHTML = '<div class="hint">HTTP <span class="badge '+(r.status<400?'b-ok':'b-err')+'">'+r.status+'</span></div><pre>'
-    + escapeHtml(JSON.stringify(r.body, null, 2)) + '</pre>';
+  const cls = r.status<400 && r.status>0 ? 'b-ok' : 'b-err';
+  $('#response').innerHTML = '<div style="margin-top:10px" class="hint">response <span class="badge '+cls+'">'+r.status+'</span></div><pre class="out">'+escapeHtml(JSON.stringify(r.body, null, 2))+'</pre>';
 };
-
-// ---------------------------------------------------------------- log
 function renderLog(){
   const host = $('#log'); host.innerHTML = '';
-  for (const e of logEntries.slice(0, 40)) {
-    const el = document.createElement('div'); el.className = 'log-entry';
-    el.innerHTML = '<div class="line"><span class="badge '+(e.status<400 && e.status>0?'b-ok':'b-err')+'">'+e.status+'</span>'
-      + '<span class="m m-'+e.method+'">'+e.method+'</span><span class="path">'+e.path+'</span>'
-      + '<span style="color:var(--muted)">'+e.ms+'ms</span></div>'
-      + '<pre>req: '+escapeHtml(JSON.stringify(e.req))+'\n\nres: '+escapeHtml(JSON.stringify(e.res, null, 2))+'</pre>';
-    el.querySelector('.line').onclick = () => {
-      const pre = el.querySelector('pre'); pre.style.display = pre.style.display==='block' ? 'none' : 'block';
-    };
+  for (const e of logEntries.slice(0, 50)) {
+    const el = document.createElement('div'); el.className = 'log-e';
+    const sc = e.status>=200&&e.status<400 ? 's2' : (e.status>=500?'s5':(e.status===0?'s0':'s4'));
+    el.innerHTML = '<div class="line"><span class="status-num '+sc+'">'+(e.status||'ERR')+'</span>'
+      + '<span class="m m-'+e.method+'">'+e.method+'</span><span class="path">'+escapeHtml(e.path)+'</span><span class="ms">'+e.ms+'ms</span></div>'
+      + '<pre class="out">req '+escapeHtml(JSON.stringify(e.req))+'\n\nres '+escapeHtml(JSON.stringify(e.res, null, 2))+'</pre>';
+    el.querySelector('.line').onclick = () => { const pre = el.querySelector('pre'); pre.style.display = pre.style.display==='block' ? 'none' : 'block'; };
     host.appendChild(el);
   }
 }
 $('#clearLog').onclick = () => { logEntries.length = 0; renderLog(); };
 
-function escapeHtml(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-// boot
-renderScenarios(); renderCatalog(); renderCtx(); renderWho(); renderLog();
+// ---------------------------------------------------------------- boot
+renderScenarios(); renderCatalog(); renderCtx(); renderWho(); renderLog(); renderChat();
+pollStatus(); setInterval(pollStatus, 6000);
 </script>
 </body>
 </html>

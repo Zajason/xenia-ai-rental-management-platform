@@ -34,6 +34,33 @@ class ConsoleController {
     }
     res.type('html').send(this.html);
   }
+
+  /** Live status strip for the console: AI reachability + configured providers.
+   *  The AI ping runs server-side to avoid a cross-origin call from the browser. */
+  @Public()
+  @Get('status')
+  async status() {
+    if (!this.enabled()) throw new NotFoundException();
+    const aiUrl = process.env.AI_CONCIERGE_URL ?? 'http://localhost:8000';
+    let ai = false;
+    try {
+      ai = (await fetch(`${aiUrl}/health`, { signal: AbortSignal.timeout(1500) })).ok;
+    } catch {
+      ai = false;
+    }
+    return {
+      env: process.env.NODE_ENV ?? 'development',
+      ai,
+      aiUrl,
+      providers: {
+        chat: process.env.LLM_PROVIDER ?? 'openai',
+        embeddings: process.env.EMBEDDING_PROVIDER ?? 'voyage',
+        openaiKey: Boolean(process.env.OPENAI_API_KEY),
+        anthropicKey: Boolean(process.env.ANTHROPIC_API_KEY),
+        voyageKey: Boolean(process.env.VOYAGE_API_KEY),
+      },
+    };
+  }
 }
 
 @Module({ controllers: [ConsoleController] })

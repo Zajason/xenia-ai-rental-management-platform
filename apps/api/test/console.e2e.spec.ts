@@ -17,8 +17,17 @@ describe('Dev console (e2e)', () => {
     const res = await request(http as never).get('/console');
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('text/html');
-    expect(res.text).toContain('Xenia — Dev Console');
-    expect(res.text).toContain('Run everything');
+    expect(res.text).toContain('Operations Console');
+    expect(res.text).toContain('Run all');
+    expect(res.text).toContain('Stock the knowledge base');
+  });
+
+  it('exposes a status endpoint with provider info', async () => {
+    const res = await request(http as never).get('/console/status');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('ai');
+    expect(res.body.providers).toHaveProperty('chat');
+    expect(res.body.providers).toHaveProperty('embeddings');
   });
 
   it('is hidden in production unless explicitly enabled', async () => {
