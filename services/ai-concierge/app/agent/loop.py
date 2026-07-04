@@ -10,10 +10,14 @@ app/rag/embeddings).
 """
 from __future__ import annotations
 
+import logging
+
 from ..llm import get_chat_provider
 from ..rag.retriever import retrieve
 from ..memory.store import load_memory
 from .tools import requires_approval, tool_specs
+
+logger = logging.getLogger(__name__)
 
 ESCALATION_HINTS = ("refund", "police", "emergency", "ambulance", "lawsuit", "broken into")
 
@@ -41,7 +45,14 @@ async def respond(
     message: str,
     language: str,
 ) -> dict:
-    chunks = await retrieve(org_id, unit_id, message, k=5)
+    # Retrieval can fail (embedding provider down / rate-limited). NEVER let that
+    # 500 — degrade to a human handoff, same as any other AI failure.
+    try:
+        chunks = await retrieve(org_id, unit_id, message, k=5)
+    except Exception as err:  # noqa: BLE001
+        logger.warning("retrieval failed → human handoff: %s", err)
+        return _handoff_response(language)
+
     context = "\n".join(f"- {c['content']}" for c in chunks) or "(no knowledge found)"
     guest_memory = load_memory(guest_id) if guest_id else ""
     retrieval_conf = chunks[0]["score"] if chunks else 0.0
@@ -69,7 +80,12 @@ async def respond(
         }
 
     system = SYSTEM_TEMPLATE.format(language=language, guest_memory=guest_memory, context=context)
-    result = provider.generate(system=system, user_message=message, tools=tool_specs())
+    # Provider calls can fail (LLM down / rate-limited / bad key) — handoff too.
+    try:
+        result = provider.generate(system=system, user_message=message, tools=tool_specs())
+    except Exception as err:  # noqa: BLE001
+        logger.warning("chat provider failed → human handoff: %s", err)
+        return _handoff_response(language)
 
     tool_calls = [
         {"name": c.name, "args": c.args, "requires_approval": requires_approval(c.name)}
@@ -82,6 +98,17 @@ async def respond(
         "confidence": round(retrieval_conf, 3),
         "escalate": escalate,
         "tool_calls": tool_calls,
+    }
+
+
+def _handoff_response(language: str) -> dict:
+    """Uniform 'passed to a human' result used whenever the AI cannot answer."""
+    return {
+        "reply": _escalation_message(language),
+        "language": language,
+        "confidence": 0.0,
+        "escalate": True,
+        "tool_calls": [{"name": "escalate_to_host", "requires_approval": False}],
     }
 
 
