@@ -10,4 +10,5 @@ import os
 
 os.environ["VOYAGE_API_KEY"] = ""
 os.environ["ANTHROPIC_API_KEY"] = ""
+os.environ["OPENAI_API_KEY"] = ""
 os.environ.setdefault("DATABASE_ADMIN_URL", "postgres://xenia:xenia@localhost:5442/xenia")

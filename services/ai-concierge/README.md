@@ -49,5 +49,23 @@ pnpm run dev:ai          # run with reload on :8000
 cd services/ai-concierge && .venv/bin/uvicorn app.main:app --reload --port 8000
 ```
 
-Models (config-driven): agent = `claude-opus-4-8`, fast/classify =
-`claude-haiku-4-5-20251001`. Embeddings = Voyage `voyage-3`.
+### Providers (swappable, chosen by env)
+
+Two independent choices, each behind a port (`app/llm/` for chat,
+`app/rag/embeddings.py` for embeddings):
+
+| Role | Env | Default | Alternatives |
+|------|-----|---------|--------------|
+| Chat ("writer") | `LLM_PROVIDER` | `openai` → `gpt-4o-mini` | `anthropic` → `claude-*` |
+| Embeddings ("librarian") | `EMBEDDING_PROVIDER` | `voyage` → `voyage-3` | `openai` → `text-embedding-3-small` |
+
+The two are independent — e.g. the default mixes **OpenAI chat + Voyage
+embeddings**. Rules: the embedding provider/model MUST match between ingest and
+search, and its output dimension must equal `EMBED_DIM` (1024). OpenAI embeddings
+are requested with `dimensions=1024` so they drop into the existing column with
+no DB change.
+
+Keys live in the repo-root `.env` (loaded by absolute path, so `dev:ai` picks
+them up): `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`. With no key
+for the selected chat provider the loop degrades to a retrieval-only answer, so
+the service always runs offline.

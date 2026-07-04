@@ -81,12 +81,19 @@ TOOLS = [
 ]
 
 
-def anthropic_tools() -> list[dict]:
-    """Strip our internal metadata to the shape the Anthropic SDK expects."""
+def tool_specs() -> list[dict]:
+    """The canonical, provider-agnostic tool list: {name, description, input_schema}.
+
+    (This happens to equal Anthropic's tool shape; each provider reshapes it.)
+    """
     return [
         {"name": t["name"], "description": t["description"], "input_schema": t["input_schema"]}
         for t in TOOLS
     ]
+
+
+# Back-compat alias.
+anthropic_tools = tool_specs
 
 
 def requires_approval(tool_name: str) -> bool:

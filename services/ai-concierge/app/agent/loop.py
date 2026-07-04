@@ -1,20 +1,19 @@
 """
-The agent loop. Orchestrates: retrieve → ground → generate (Claude) with gated
-tools → guardrails/escalation → memory update. Degrades gracefully to a
-retrieval-only answer when no ANTHROPIC_API_KEY is configured, so the service is
-runnable offline for development and demos.
+The agent loop. Orchestrates: retrieve → ground → generate (via the configured
+LLM provider) with gated tools → guardrails/escalation → memory update. Degrades
+gracefully to a retrieval-only answer when no chat provider is configured, so the
+service is runnable offline for development and demos.
+
+The chat model is provider-agnostic (see app/llm) — OpenAI (default) or
+Anthropic, chosen by LLM_PROVIDER. Embeddings are a separate choice (see
+app/rag/embeddings).
 """
 from __future__ import annotations
 
-from ..config import settings
+from ..llm import get_chat_provider
 from ..rag.retriever import retrieve
 from ..memory.store import load_memory
-from .tools import anthropic_tools, requires_approval
-
-try:
-    import anthropic  # type: ignore
-except ImportError:  # pragma: no cover
-    anthropic = None
+from .tools import requires_approval, tool_specs
 
 ESCALATION_HINTS = ("refund", "police", "emergency", "ambulance", "lawsuit", "broken into")
 
@@ -57,8 +56,9 @@ async def respond(
             "tool_calls": [{"name": "escalate_to_host", "requires_approval": False}],
         }
 
-    if not (settings.anthropic_api_key and anthropic is not None):
-        # Offline fallback: answer from the top chunk.
+    provider = get_chat_provider()
+    if provider is None:
+        # Offline fallback: no chat provider configured → answer from the top chunk.
         reply = chunks[0]["content"] if chunks else _unknown_message(language)
         return {
             "reply": reply,
@@ -68,33 +68,16 @@ async def respond(
             "tool_calls": [],
         }
 
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     system = SYSTEM_TEMPLATE.format(language=language, guest_memory=guest_memory, context=context)
-    resp = client.messages.create(
-        model=settings.anthropic_agent_model,
-        max_tokens=600,
-        system=system,
-        tools=anthropic_tools(),
-        messages=[{"role": "user", "content": message}],
-    )
+    result = provider.generate(system=system, user_message=message, tools=tool_specs())
 
-    tool_calls = []
-    text_parts = []
-    for block in resp.content:
-        if block.type == "text":
-            text_parts.append(block.text)
-        elif block.type == "tool_use":
-            tool_calls.append(
-                {
-                    "name": block.name,
-                    "args": block.input,
-                    "requires_approval": requires_approval(block.name),
-                }
-            )
-
+    tool_calls = [
+        {"name": c.name, "args": c.args, "requires_approval": requires_approval(c.name)}
+        for c in result.tool_calls
+    ]
     escalate = any(tc["name"] == "escalate_to_host" for tc in tool_calls)
     return {
-        "reply": " ".join(text_parts).strip() or _unknown_message(language),
+        "reply": result.text.strip() or _unknown_message(language),
         "language": language,
         "confidence": round(retrieval_conf, 3),
         "escalate": escalate,
