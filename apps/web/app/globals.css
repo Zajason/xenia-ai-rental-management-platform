@@ -1,24 +1,92 @@
-:root {
-  --bg: #0b1020;
-  --panel: #131a2e;
-  --border: #233049;
-  --text: #e6ecf7;
-  --muted: #93a0bd;
-  --accent: #6ea8fe;
+@import 'tailwindcss';
+
+@theme {
+  --color-bg: #0a0e17;
+  --color-surface: #111726;
+  --color-surface-2: #0d121e;
+  --color-raised: #161d2f;
+  --color-border: #1e2740;
+  --color-border-strong: #2a3550;
+
+  --color-text: #e8edf6;
+  --color-muted: #8794ad;
+  --color-faint: #5b6680;
+
+  --color-accent: #5b9bff;
+  --color-accent-2: #3d7ff0;
+  --color-accent-soft: #17233d;
+
+  --color-ok: #34d399;
+  --color-ok-soft: #0d2a1f;
+  --color-warn: #fbbf24;
+  --color-warn-soft: #2b2107;
+  --color-err: #f87171;
+  --color-err-soft: #2d1414;
+  --color-purple: #a78bfa;
+  --color-purple-soft: #201c3a;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.02) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 24px 48px -16px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html,
+body {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 a {
-  color: var(--accent);
+  color: inherit;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+
+/* Thin, unobtrusive scrollbars that fit the dark theme */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 999px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-2) 0%,
+    var(--color-raised) 50%,
+    var(--color-surface-2) 100%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.6s infinite linear;
 }

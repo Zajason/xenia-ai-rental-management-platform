@@ -4,6 +4,8 @@ import { CurrentOrg } from '../../common/current-org.decorator.js';
 import { BookingService } from './booking.service.js';
 import { ChannelsController } from './channels.controller.js';
 import { ChannelsService } from './channels.service.js';
+import { GuestsController } from './guests.controller.js';
+import { GuestsService } from './guests.service.js';
 
 @ApiTags('bookings')
 @Controller('bookings')
@@ -37,8 +39,8 @@ class BookingController {
 }
 
 @Module({
-  controllers: [BookingController, ChannelsController],
-  providers: [BookingService, ChannelsService],
-  exports: [BookingService, ChannelsService],
+  controllers: [BookingController, ChannelsController, GuestsController],
+  providers: [BookingService, ChannelsService, GuestsService],
+  exports: [BookingService, ChannelsService, GuestsService],
 })
 export class BookingModule {}
