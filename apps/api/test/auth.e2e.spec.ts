@@ -167,6 +167,24 @@ describe('Auth (e2e)', () => {
     expect(res.status).toBe(403);
   });
 
+  it('GET /auth/members lists the org team', async () => {
+    const res = await request(http)
+      .get('/auth/members')
+      .set('Authorization', `Bearer ${accessToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.length).toBeGreaterThanOrEqual(2); // owner + cleaner
+    const roles = res.body.map((m: { role: string }) => m.role);
+    expect(roles).toContain('owner');
+    expect(roles).toContain('cleaner');
+  });
+
+  it('RBAC: a cleaner cannot list members (403)', async () => {
+    const res = await request(http)
+      .get('/auth/members')
+      .set('Authorization', `Bearer ${cleanerToken}`);
+    expect(res.status).toBe(403);
+  });
+
   it('POST /auth/invitations/accept rejects a bad token (400)', async () => {
     const res = await request(http)
       .post('/auth/invitations/accept')

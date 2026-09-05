@@ -6,8 +6,10 @@ pydantic-settings==2.7.0
 python-dotenv==1.0.1
 httpx==0.28.1
 
-# LLM + embeddings (Anthropic stack; Voyage is Anthropic's recommended embeddings)
+# LLM providers (chat is provider-switchable: openai default, anthropic optional)
+openai==1.58.1
 anthropic==0.42.0
+# Embeddings (voyage default; openai also supported via the same key above)
 voyageai==0.3.2
 
 # Postgres + pgvector

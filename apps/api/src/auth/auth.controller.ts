@@ -73,6 +73,14 @@ export class AuthController {
     return this.auth.me(user);
   }
 
+  // --- team ---
+  @ApiBearerAuth()
+  @Roles('manager')
+  @Get('members')
+  members(@CurrentOrg() orgId: string) {
+    return this.auth.listMembers(orgId);
+  }
+
   // --- invitations (provision staff into an org) ---
   @ApiBearerAuth()
   @Roles('manager')

@@ -9,13 +9,17 @@ classification or a langid model later.
 """
 from __future__ import annotations
 
+import re
+
 SUPPORTED = {"en", "el", "fr", "de", "it", "es", "pt", "nl"}
 DEFAULT = "en"
 
-# Tiny stop-word heuristic for offline/dev use. Replace with a real detector.
+# Tiny stop-word heuristic for offline/dev use. Replace with a real detector
+# (langid / a fast model). Multi-word hints are more specific and ranked first
+# so a whole-word "wo" (German) never wins over an actual French/etc. phrase.
 _HINTS = {
     "el": ["καλημέρα", "ευχαριστώ", "παρακαλώ", "πού"],
-    "fr": ["bonjour", "merci", "où", "s'il"],
+    "fr": ["bonjour", "merci", "où", "s'il", "s'il vous plaît"],
     "de": ["hallo", "danke", "wo", "bitte"],
     "it": ["ciao", "grazie", "dove", "per favore"],
     "es": ["hola", "gracias", "dónde", "por favor"],
@@ -25,10 +29,16 @@ _HINTS = {
 
 
 def detect_language(text: str) -> str:
+    """Heuristic detection with WHOLE-WORD matching.
+
+    Word boundaries are essential: a naive substring check matched "wo" (German)
+    inside the English word "pass·wo·rd" and answered guests in German.
+    """
     lowered = text.lower()
     for lang, hints in _HINTS.items():
-        if any(h in lowered for h in hints):
-            return lang
+        for hint in hints:
+            if re.search(rf"(?<!\w){re.escape(hint)}(?!\w)", lowered):
+                return lang
     return DEFAULT
 
 
