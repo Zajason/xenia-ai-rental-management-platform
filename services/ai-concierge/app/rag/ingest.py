@@ -84,10 +84,22 @@ async def _gather(conn: psycopg.AsyncConnection, unit_id: str | None) -> list[di
 
 
 async def _reindex_scope(org_id: str, unit_id: str | None) -> int:
-    """Rebuild kb_chunks for one unit (unit_id set) or the org's shared docs (None)."""
+    """Rebuild kb_chunks for one unit (unit_id set) or the org's shared docs (None).
+
+    Editing a fact or a document triggers a fire-and-forget reindex, so several
+    rebuilds of the same scope can be in flight at once (adding six facts fires
+    six). Delete-then-insert is only idempotent when those runs are serialized —
+    concurrently they interleave, each inserting after the others have deleted,
+    and the scope ends up with N copies of every chunk. A transaction-scoped
+    advisory lock keyed on the scope makes them queue instead; the lock is
+    released on commit.
+    """
     async with await psycopg.AsyncConnection.connect(settings.database_url) as conn:
         await register_vector_async(conn)
         await conn.execute("SELECT set_config('app.current_org', %s, true)", (org_id,))
+        await conn.execute(
+            "SELECT pg_advisory_xact_lock(hashtext(%s))", (f"kb_reindex:{org_id}:{unit_id or 'shared'}",)
+        )
 
         records = await _gather(conn, unit_id)
         vectors = embed([r["content"] for r in records]) if records else []

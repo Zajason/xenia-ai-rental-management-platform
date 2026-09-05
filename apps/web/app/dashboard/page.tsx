@@ -88,9 +88,13 @@ export default function OverviewPage() {
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Kpi
           icon={Building2}
-          label="Properties"
+          label="Units"
           value={loading ? null : `${units?.length ?? 0}`}
-          hint={loading ? undefined : `${units?.length ?? 0} units · ${properties?.length ?? 0} properties`}
+          hint={
+            loading
+              ? undefined
+              : `across ${properties?.length ?? 0} ${properties?.length === 1 ? 'property' : 'properties'}`
+          }
         />
         <Kpi icon={ClipboardList} label="Open tasks" value={loading ? null : `${openTasks.length}`} hint="cleaning & inspections" />
         <Kpi icon={Wrench} label="Open tickets" value={loading ? null : `${openTickets.length}`} hint="maintenance" />
